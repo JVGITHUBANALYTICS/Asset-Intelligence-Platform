@@ -1,38 +1,59 @@
 import type { LoginCredentials, RegisterData, AuthUser } from '../types';
-import { mockDelay } from './api';
+import { supabase } from '../lib/supabase';
 
 export async function loginUser(credentials: LoginCredentials): Promise<AuthUser | null> {
-  await mockDelay(800);
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: credentials.email,
+    password: credentials.password,
+  });
 
-  if (credentials.email && credentials.password.length >= 6) {
-    return {
-      id: '1',
-      name: 'Sarah Johnson',
-      email: credentials.email,
-      role: 'admin',
-      title: 'Senior Asset Manager',
-      organization: 'PPL Electric Utilities',
-    };
-  }
-  return null;
+  if (error || !data.user) return null;
+
+  // Fetch profile for role/title/organization
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('name, role, title, organization')
+    .eq('id', data.user.id)
+    .single();
+
+  return {
+    id: data.user.id,
+    name: profile?.name ?? data.user.user_metadata?.name ?? '',
+    email: data.user.email ?? '',
+    role: profile?.role ?? 'viewer',
+    title: profile?.title ?? '',
+    organization: profile?.organization ?? '',
+  };
 }
 
 export async function registerUser(data: RegisterData): Promise<AuthUser | null> {
-  await mockDelay(800);
+  if (data.password !== data.confirmPassword) return null;
 
-  if (data.email && data.password.length >= 6 && data.password === data.confirmPassword) {
-    return {
-      id: '2',
-      name: data.name,
-      email: data.email,
-      role: 'viewer',
-      title: 'Senior Asset Manager',
-      organization: 'PPL Electric Utilities',
-    };
-  }
-  return null;
+  const { data: authData, error } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      data: {
+        name: data.name,
+        role: 'viewer',
+        title: '',
+        organization: 'PPL Electric Utilities',
+      },
+    },
+  });
+
+  if (error || !authData.user) return null;
+
+  return {
+    id: authData.user.id,
+    name: data.name,
+    email: data.email,
+    role: 'viewer',
+    title: '',
+    organization: 'PPL Electric Utilities',
+  };
 }
 
-export function logoutUser(): void {
-  localStorage.removeItem('auth_user');
+export async function logoutUser(): Promise<void> {
+  await supabase.auth.signOut();
 }

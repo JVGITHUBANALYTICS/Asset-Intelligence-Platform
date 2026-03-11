@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, type ReactNode } from 'react';
 import type { AuthContextType, AuthUser, LoginCredentials, RegisterData } from '../types';
+import { supabase } from '../lib/supabase';
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -10,77 +11,93 @@ export const AuthContext = createContext<AuthContextType>({
   logout: () => {},
 });
 
-const MOCK_USER: AuthUser = {
-  id: '1',
-  name: 'Sarah Chen',
-  email: 'schen@pplelectric.com',
-  role: 'asset_manager',
-  title: 'Senior Asset Manager',
-  organization: 'PPL Electric Utilities',
-};
+async function fetchProfile(userId: string): Promise<Partial<AuthUser>> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('name, role, title, organization')
+    .eq('id', userId)
+    .single();
+
+  return data ?? {};
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Listen for auth state changes (session restore, login, logout)
   useEffect(() => {
-    const stored = localStorage.getItem('auth_user');
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem('auth_user');
+    // Get initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        setUser({
+          id: session.user.id,
+          name: profile.name ?? session.user.user_metadata?.name ?? '',
+          email: session.user.email ?? '',
+          role: (profile.role as AuthUser['role']) ?? 'viewer',
+          title: profile.title ?? '',
+          organization: profile.organization ?? '',
+        });
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    });
+
+    // Subscribe to future auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          const profile = await fetchProfile(session.user.id);
+          setUser({
+            id: session.user.id,
+            name: profile.name ?? session.user.user_metadata?.name ?? '',
+            email: session.user.email ?? '',
+            role: (profile.role as AuthUser['role']) ?? 'viewer',
+            title: profile.title ?? '',
+            organization: profile.organization ?? '',
+          });
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      },
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<boolean> => {
     setIsLoading(true);
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    if (credentials.email && credentials.password.length >= 6) {
-      const authUser: AuthUser = {
-        ...MOCK_USER,
-        email: credentials.email,
-      };
-      setUser(authUser);
-      localStorage.setItem('auth_user', JSON.stringify(authUser));
-      setIsLoading(false);
-      return true;
-    }
-
+    const { error } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password,
+    });
     setIsLoading(false);
-    return false;
+    return !error;
   };
 
   const register = async (data: RegisterData): Promise<boolean> => {
+    if (data.password !== data.confirmPassword) return false;
+
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    if (data.email && data.password.length >= 6 && data.password === data.confirmPassword) {
-      const authUser: AuthUser = {
-        id: '2',
-        name: data.name,
-        email: data.email,
-        role: 'viewer',
-        title: 'Utility Analyst',
-        organization: 'PPL Electric Utilities',
-      };
-      setUser(authUser);
-      localStorage.setItem('auth_user', JSON.stringify(authUser));
-      setIsLoading(false);
-      return true;
-    }
-
+    const { error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: {
+          name: data.name,
+          role: 'viewer',
+          title: '',
+          organization: 'PPL Electric Utilities',
+        },
+      },
+    });
     setIsLoading(false);
-    return false;
+    return !error;
   };
 
   const logout = () => {
+    supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('auth_user');
   };
 
   return (
