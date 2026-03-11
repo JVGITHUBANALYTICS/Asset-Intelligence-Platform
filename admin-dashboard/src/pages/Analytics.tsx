@@ -140,7 +140,7 @@ export default function Analytics() {
     }
     return Object.entries(groups).map(([type, { total, count }]) => ({
       type: type.replace('Transformer', 'Xfmr').replace('Disconnect ', 'Disc. ').replace('Underground ', 'UG ').replace('Capacitor ', 'Cap. ').replace('Voltage ', 'Volt. '),
-      avgHealth: Math.round(total / count),
+      avgHealth: count > 0 ? Math.round(total / count) : 0,
       fullName: type,
     }));
   }, [assets]);

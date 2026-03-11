@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseConfigured } from '../../lib/supabase';
 import Button from '../UI/Button';
 import Input from '../UI/Input';
 
@@ -43,11 +43,16 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       return;
     }
 
+    if (!supabaseConfigured) {
+      setError('Backend not configured. Supabase environment variables are missing from this deployment.');
+      return;
+    }
+
     const success = await login({ email, password });
     if (success) {
       onSuccess();
     } else {
-      setError('Invalid credentials. Password must be at least 6 characters.');
+      setError('Invalid email or password. Please try again.');
     }
   };
 

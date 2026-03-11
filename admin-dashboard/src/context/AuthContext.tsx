@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, type ReactNode } from 'react';
 import type { AuthContextType, AuthUser, LoginCredentials, RegisterData } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseConfigured } from '../lib/supabase';
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -69,29 +69,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<boolean> => {
-    setIsLoading(true);
-    const { data: signInData, error } = await supabase.auth.signInWithPassword({
-      email: credentials.email,
-      password: credentials.password,
-    });
-
-    if (error || !signInData.user) {
-      setIsLoading(false);
+    if (!supabaseConfigured) {
+      console.error('Cannot login: Supabase environment variables are not configured.');
       return false;
     }
 
-    // Set user immediately so navigation works (don't wait for onAuthStateChange)
-    const profile = await fetchProfile(signInData.user.id);
-    setUser({
-      id: signInData.user.id,
-      name: profile.name ?? signInData.user.user_metadata?.name ?? '',
-      email: signInData.user.email ?? '',
-      role: (profile.role as AuthUser['role']) ?? 'viewer',
-      title: profile.title ?? '',
-      organization: profile.organization ?? '',
-    });
-    setIsLoading(false);
-    return true;
+    setIsLoading(true);
+    try {
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+      if (error || !signInData.user) {
+        console.error('Login failed:', error?.message);
+        setIsLoading(false);
+        return false;
+      }
+
+      // Set user immediately so navigation works (don't wait for onAuthStateChange)
+      const profile = await fetchProfile(signInData.user.id);
+      setUser({
+        id: signInData.user.id,
+        name: profile.name ?? signInData.user.user_metadata?.name ?? '',
+        email: signInData.user.email ?? '',
+        role: (profile.role as AuthUser['role']) ?? 'viewer',
+        title: profile.title ?? '',
+        organization: profile.organization ?? '',
+      });
+      setIsLoading(false);
+      return true;
+    } catch (err) {
+      console.error('Login error:', err);
+      setIsLoading(false);
+      return false;
+    }
   };
 
   const register = async (data: RegisterData): Promise<boolean> => {
