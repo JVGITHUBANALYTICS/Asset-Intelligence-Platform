@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabase';
 import Button from '../UI/Button';
 import Input from '../UI/Input';
 
@@ -11,10 +12,27 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const { login, isLoading } = useAuth();
-  const [email, setEmail] = useState('schen@pplelectric.com');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Enter your email address first, then click Forgot password.');
+      return;
+    }
+    setError('');
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    if (resetError) {
+      setError(resetError.message);
+    } else {
+      setResetSent(true);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -38,6 +56,12 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
           {error}
+        </div>
+      )}
+
+      {resetSent && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg text-sm">
+          Password reset email sent. Check your inbox.
         </div>
       )}
 
@@ -77,7 +101,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           />
           Remember me
         </label>
-        <button type="button" className="text-primary-600 dark:text-primary-400 hover:underline">
+        <button type="button" onClick={handleForgotPassword} className="text-primary-600 dark:text-primary-400 hover:underline">
           Forgot password?
         </button>
       </div>
@@ -94,7 +118,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       </p>
 
       <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-        Use your utility credentials to sign in. Demo: schen@pplelectric.com / password
+        Sign in with your utility credentials or create a new account.
       </p>
     </form>
   );
