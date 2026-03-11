@@ -1,5 +1,6 @@
+import { useState, useEffect, useMemo } from 'react';
+import { getAssets } from '../services/assetService';
 import { mockChartData } from '../data/mockStats';
-import { mockAssets } from '../data/mockAssets';
 import ActivityFeed from '../components/Dashboard/ActivityFeed';
 import Card, { CardHeader } from '../components/UI/Card';
 import Button from '../components/UI/Button';
@@ -93,10 +94,18 @@ const mapRiskColors: Record<string, string> = {
 export default function Dashboard() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const [allAssets, setAllAssets] = useState<Asset[]>([]);
 
-  const topAssets = [...mockAssets]
-    .sort((a, b) => b.riskScore - a.riskScore)
-    .slice(0, 5);
+  useEffect(() => {
+    let cancelled = false;
+    getAssets().then((data) => { if (!cancelled) setAllAssets(data); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const topAssets = useMemo(() =>
+    [...allAssets].sort((a, b) => b.riskScore - a.riskScore).slice(0, 5),
+    [allAssets],
+  );
 
   const tooltipStyle = {
     backgroundColor: isDark ? '#1f2937' : '#ffffff',

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { BarChart3 } from 'lucide-react';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis,
@@ -10,10 +10,11 @@ import {
 } from 'recharts';
 import Card, { CardHeader } from '../components/UI/Card';
 import { useTheme } from '../hooks/useTheme';
-import { mockAssets } from '../data/mockAssets';
-import { mockInspections } from '../data/mockInspections';
-import { mockDGATests } from '../data/mockDGATests';
-import { mockMaintenance } from '../data/mockMaintenance';
+import { getAssets } from '../services/assetService';
+import { getInspections } from '../services/inspectionService';
+import { getDGATests } from '../services/dgaService';
+import { getMaintenanceRecords } from '../services/maintenanceService';
+import type { Asset, InspectionResult, DGATestResult, MaintenanceRecord } from '../types';
 
 // Age vs Risk scatter data
 const ageRiskData = [
@@ -115,10 +116,24 @@ export default function Analytics() {
     fontSize: '12px',
   };
 
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [inspections, setInspections] = useState<InspectionResult[]>([]);
+  const [dgaTests, setDgaTests] = useState<DGATestResult[]>([]);
+  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getAssets(), getInspections(), getDGATests(), getMaintenanceRecords()])
+      .then(([a, i, d, m]) => {
+        if (!cancelled) { setAssets(a); setInspections(i); setDgaTests(d); setMaintenance(m); }
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   // ─── Asset Registry: Health Score by Asset Type (radar) ───────
   const assetHealthRadar = useMemo(() => {
     const groups: Record<string, { total: number; count: number }> = {};
-    for (const a of mockAssets) {
+    for (const a of assets) {
       if (!groups[a.type]) groups[a.type] = { total: 0, count: 0 };
       groups[a.type].total += a.healthScore;
       groups[a.type].count += 1;
@@ -128,27 +143,27 @@ export default function Analytics() {
       avgHealth: Math.round(total / count),
       fullName: type,
     }));
-  }, []);
+  }, [assets]);
 
   // ─── Inspection Results: Condition distribution (pie) ─────────
   const inspectionConditionData = useMemo(() => {
     const counts: Record<string, number> = { Good: 0, Fair: 0, Poor: 0, Critical: 0 };
-    for (const insp of mockInspections) {
+    for (const insp of inspections) {
       counts[insp.overallCondition] = (counts[insp.overallCondition] || 0) + 1;
     }
     return Object.entries(counts).map(([condition, count]) => ({
       name: condition,
       value: count,
-      pct: Math.round((count / mockInspections.length) * 1000) / 10,
+      pct: Math.round((count / inspections.length) * 1000) / 10,
     }));
-  }, []);
+  }, [inspections]);
 
   // ─── DGA Test Results: TDCG distribution by diagnosis (bar) ──
   const dgaDiagnosisData = useMemo(() => {
     const groups: Record<string, { count: number; totalTDCG: number; faults: Record<string, number> }> = {};
     const diagnosisOrder = ['Normal', 'Caution', 'Warning', 'Critical'];
     for (const d of diagnosisOrder) groups[d] = { count: 0, totalTDCG: 0, faults: {} };
-    for (const t of mockDGATests) {
+    for (const t of dgaTests) {
       const g = groups[t.diagnosis];
       g.count += 1;
       g.totalTDCG += t.tdcg;
@@ -160,13 +175,13 @@ export default function Analytics() {
       avgTDCG: Math.round(groups[d].totalTDCG / (groups[d].count || 1)),
       topFault: Object.entries(groups[d].faults).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A',
     }));
-  }, []);
+  }, [dgaTests]);
 
   // ─── Maintenance: Cost by Asset Type & Category (stacked bar) ─
   const maintenanceCostData = useMemo(() => {
-    const assetTypes = [...new Set(mockMaintenance.map((m) => m.assetType))].sort();
+    const assetTypes = [...new Set(maintenance.map((m) => m.assetType))].sort();
     const data = assetTypes.map((type) => {
-      const records = mockMaintenance.filter((m) => m.assetType === type);
+      const records = maintenance.filter((m) => m.assetType === type);
       const preventive = records.filter((r) => r.category === 'Preventive').reduce((s, r) => s + r.cost, 0);
       const planned = records.filter((r) => r.category === 'Repair - Planned').reduce((s, r) => s + r.cost, 0);
       const unplanned = records.filter((r) => r.category === 'Repair - Unplanned').reduce((s, r) => s + r.cost, 0);
@@ -179,7 +194,7 @@ export default function Analytics() {
       };
     });
     return data;
-  }, []);
+  }, [maintenance]);
 
   return (
     <div className="space-y-6">
@@ -329,7 +344,7 @@ export default function Analytics() {
           Data-Driven Analytics
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Computed from {mockAssets.length.toLocaleString()} assets, {mockInspections.length.toLocaleString()} inspections, {mockDGATests.length.toLocaleString()} DGA tests, and {mockMaintenance.length.toLocaleString()} maintenance records
+          Computed from {assets.length.toLocaleString()} assets, {inspections.length.toLocaleString()} inspections, {dgaTests.length.toLocaleString()} DGA tests, and {maintenance.length.toLocaleString()} maintenance records
         </p>
       </div>
 
