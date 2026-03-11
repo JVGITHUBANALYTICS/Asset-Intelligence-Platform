@@ -1,4 +1,5 @@
-import { mockAlerts } from '../../data/mockStats';
+import { useState, useEffect } from 'react';
+import { getAlerts } from '../../services/alertService';
 import { formatRelativeTime } from '../../utils/helpers';
 import { AlertTriangle, Thermometer, Gauge, ClipboardCheck, Wrench, FlaskConical } from 'lucide-react';
 import { RISK_COLORS } from '../../utils/constants';
@@ -21,9 +22,19 @@ const severityBorderColors: Record<string, string> = {
 };
 
 export default function ActivityFeed() {
+  const [alerts, setAlerts] = useState<ActivityAlert[]>([]);
+
+  useEffect(() => {
+    getAlerts(6).then(setAlerts);
+  }, []);
+
+  if (alerts.length === 0) {
+    return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No recent alerts</p>;
+  }
+
   return (
     <div className="space-y-3">
-      {mockAlerts.slice(0, 6).map((alert: ActivityAlert) => {
+      {alerts.map((alert: ActivityAlert) => {
         const colors = RISK_COLORS[alert.severity];
         return (
           <div

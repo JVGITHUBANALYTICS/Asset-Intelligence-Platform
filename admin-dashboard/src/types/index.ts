@@ -40,15 +40,29 @@ export interface FleetStat {
   color: 'critical' | 'warning' | 'good' | 'info';
 }
 
+export type ModelCategory = 'Regressor' | 'Classifier' | 'Clustering' | 'Rule-Based' | 'Physics-Based' | 'Ensemble';
+export type ModelStatus = 'active' | 'training' | 'draft' | 'retired';
+
 export interface HealthModel {
   id: string;
   name: string;
-  type: string;
+  category: ModelCategory;
   algorithm: string;
   accuracy: number;
   lastRun: string;
   assetsScored: number;
   icon: string;
+  status: ModelStatus;
+  version: string;
+  createdBy: string;
+  createdDate: string;
+  description: string;
+  businessContext: string;
+  inputFeatures: string[];
+  outputMetric: string;
+  trainingDataSize: number;
+  refreshFrequency: string;
+  assetTypes: string[];
 }
 
 export interface ReplacementItem {

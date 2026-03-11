@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   FileText,
   Heart,
@@ -25,23 +25,28 @@ import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import Input from '../components/UI/Input';
 import Modal from '../components/UI/Modal';
-import { mockAssets } from '../data/mockAssets';
+import { getAssets } from '../services/assetService';
+import { getDocuments, uploadDocument, downloadDocument, deleteDocument } from '../services/documentService';
+import type { DocumentRecord } from '../services/documentService';
 import { RISK_COLORS } from '../utils/constants';
+import type { Asset } from '../types';
 
 // ─── Fleet Health Calculations ──────────────────────────────────
-function useFleetHealthData() {
+function useFleetHealthData(allAssets: Asset[]) {
   return useMemo(() => {
-    const total = mockAssets.length;
-    const critical = mockAssets.filter((a) => a.riskLevel === 'critical').length;
-    const high = mockAssets.filter((a) => a.riskLevel === 'high').length;
-    const medium = mockAssets.filter((a) => a.riskLevel === 'medium').length;
-    const low = mockAssets.filter((a) => a.riskLevel === 'low').length;
-    const avgHealth = Math.round(mockAssets.reduce((sum, a) => sum + a.healthScore, 0) / total);
-    const avgRisk = Math.round(mockAssets.reduce((sum, a) => sum + a.riskScore, 0) / total);
+    const total = allAssets.length;
+    if (total === 0) return { total: 0, critical: 0, high: 0, medium: 0, low: 0, avgHealth: 0, avgRisk: 0, byType: {}, byVoltageClass: {} };
+
+    const critical = allAssets.filter((a) => a.riskLevel === 'critical').length;
+    const high = allAssets.filter((a) => a.riskLevel === 'high').length;
+    const medium = allAssets.filter((a) => a.riskLevel === 'medium').length;
+    const low = allAssets.filter((a) => a.riskLevel === 'low').length;
+    const avgHealth = Math.round(allAssets.reduce((sum, a) => sum + a.healthScore, 0) / total);
+    const avgRisk = Math.round(allAssets.reduce((sum, a) => sum + a.riskScore, 0) / total);
 
     // By asset type
     const byType: Record<string, { count: number; avgHealth: number; avgRisk: number }> = {};
-    mockAssets.forEach((a) => {
+    allAssets.forEach((a) => {
       if (!byType[a.type]) byType[a.type] = { count: 0, avgHealth: 0, avgRisk: 0 };
       byType[a.type].count += 1;
       byType[a.type].avgHealth += a.healthScore;
@@ -54,7 +59,7 @@ function useFleetHealthData() {
 
     // By voltage class
     const byVoltageClass: Record<string, { count: number; avgHealth: number; avgRisk: number }> = {};
-    mockAssets.forEach((a) => {
+    allAssets.forEach((a) => {
       if (!byVoltageClass[a.voltageClass]) byVoltageClass[a.voltageClass] = { count: 0, avgHealth: 0, avgRisk: 0 };
       byVoltageClass[a.voltageClass].count += 1;
       byVoltageClass[a.voltageClass].avgHealth += a.healthScore;
@@ -66,18 +71,20 @@ function useFleetHealthData() {
     });
 
     return { total, critical, high, medium, low, avgHealth, avgRisk, byType, byVoltageClass };
-  }, []);
+  }, [allAssets]);
 }
 
-function usePUCFilingData() {
+function usePUCFilingData(allAssets: Asset[]) {
   return useMemo(() => {
-    const criticalAssets = mockAssets.filter((a) => a.riskLevel === 'critical' || a.riskLevel === 'high');
+    const criticalAssets = allAssets.filter((a) => a.riskLevel === 'critical' || a.riskLevel === 'high');
+    if (criticalAssets.length === 0) return { criticalAssets: [], totalCapitalRequired: 0, totalCustomersAtRisk: 0, avgAge: 0 };
+
     const totalCapitalRequired = criticalAssets.reduce((sum, a) => sum + a.estimatedCost, 0);
     const totalCustomersAtRisk = criticalAssets.reduce((sum, a) => sum + (a.customersAffected ?? 0), 0);
     const avgAge = Math.round(criticalAssets.reduce((sum, a) => sum + a.age, 0) / criticalAssets.length);
 
     return { criticalAssets, totalCapitalRequired, totalCustomersAtRisk, avgAge };
-  }, []);
+  }, [allAssets]);
 }
 
 // ─── Risk Level Badge ───────────────────────────────────────────
@@ -95,8 +102,8 @@ function RiskBadge({ level }: { level: string }) {
 }
 
 // ─── Fleet Health Report Content ────────────────────────────────
-function FleetHealthReport({ onClose }: { onClose: () => void }) {
-  const data = useFleetHealthData();
+function FleetHealthReport({ onClose, allAssets }: { onClose: () => void; allAssets: Asset[] }) {
+  const data = useFleetHealthData(allAssets);
 
   return (
     <div className="mt-4 space-y-6 border-t border-gray-200 dark:border-gray-700 pt-6">
@@ -289,8 +296,8 @@ function FleetHealthReport({ onClose }: { onClose: () => void }) {
 }
 
 // ─── PUC Filing Report Content ──────────────────────────────────
-function PUCFilingReport({ onClose }: { onClose: () => void }) {
-  const data = usePUCFilingData();
+function PUCFilingReport({ onClose, allAssets }: { onClose: () => void; allAssets: Asset[] }) {
+  const data = usePUCFilingData(allAssets);
 
   return (
     <div className="mt-4 space-y-6 border-t border-gray-200 dark:border-gray-700 pt-6">
@@ -778,6 +785,12 @@ const INITIAL_UPLOADED_DOCS: UploadedDocument[] = [
 
 // ─── Main Reports Page ──────────────────────────────────────────
 export default function Reports() {
+  const [allAssets, setAllAssets] = useState<Asset[]>([]);
+
+  useEffect(() => {
+    getAssets().then(setAllAssets);
+  }, []);
+
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<GeneratedReport | null>(null);
   const [reportSearch, setReportSearch] = useState('');
@@ -785,9 +798,11 @@ export default function Reports() {
 
   // Upload state
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocument[]>(INITIAL_UPLOADED_DOCS);
+  const [dbDocs, setDbDocs] = useState<DocumentRecord[]>([]);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadFile, setUploadFile] = useState<{ name: string; size: string; type: string } | null>(null);
+  const [uploadRawFile, setUploadRawFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadCategory, setUploadCategory] = useState<DocumentCategory>('Regulatory Filing');
   const [uploadDescription, setUploadDescription] = useState('');
@@ -798,6 +813,11 @@ export default function Reports() {
   const [previewDoc, setPreviewDoc] = useState<UploadedDocument | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch uploaded documents from Supabase
+  useEffect(() => {
+    getDocuments().then(setDbDocs);
+  }, []);
+
   const handleGenerate = (reportId: string) => {
     setExpandedReport((prev) => (prev === reportId ? null : reportId));
   };
@@ -805,6 +825,7 @@ export default function Reports() {
   // ─── Upload Handlers ────────────────────────────────────────
   const resetUploadForm = useCallback(() => {
     setUploadFile(null);
+    setUploadRawFile(null);
     setUploadTitle('');
     setUploadCategory('Regulatory Filing');
     setUploadDescription('');
@@ -816,6 +837,7 @@ export default function Reports() {
     const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     setUploadFile({ name: file.name, size: `${sizeMB} MB`, type: ext });
+    setUploadRawFile(file);
     const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
     setUploadTitle(nameWithoutExt);
   }, []);
@@ -842,8 +864,27 @@ export default function Reports() {
     setUploadTags((prev) => prev.filter((t) => t !== tag));
   }, []);
 
-  const handleUploadSubmit = useCallback(() => {
+  const handleUploadSubmit = useCallback(async () => {
     if (!uploadFile || !uploadTitle.trim()) return;
+
+    // Try real Supabase upload if we have the raw file
+    if (uploadRawFile) {
+      const doc = await uploadDocument(uploadRawFile, {
+        title: uploadTitle.trim(),
+        category: uploadCategory,
+        description: uploadDescription.trim(),
+        tags: uploadTags,
+      });
+      if (doc) {
+        // Refresh list from DB
+        getDocuments().then(setDbDocs);
+        resetUploadForm();
+        setShowUploadModal(false);
+        return;
+      }
+    }
+
+    // Fallback: add to local state
     const newDoc: UploadedDocument = {
       id: `doc-${Date.now()}`,
       fileName: uploadFile.name,
@@ -859,11 +900,19 @@ export default function Reports() {
     setUploadedDocs((prev) => [newDoc, ...prev]);
     resetUploadForm();
     setShowUploadModal(false);
-  }, [uploadFile, uploadTitle, uploadCategory, uploadDescription, uploadTags, resetUploadForm]);
+  }, [uploadFile, uploadRawFile, uploadTitle, uploadCategory, uploadDescription, uploadTags, resetUploadForm]);
 
   const handleDeleteDoc = useCallback((docId: string) => {
-    setUploadedDocs((prev) => prev.filter((d) => d.id !== docId));
-  }, []);
+    // Check if it's a DB doc
+    const dbDoc = dbDocs.find((d) => d.id === docId);
+    if (dbDoc) {
+      deleteDocument(dbDoc.id, dbDoc.storagePath).then((ok) => {
+        if (ok) setDbDocs((prev) => prev.filter((d) => d.id !== docId));
+      });
+    } else {
+      setUploadedDocs((prev) => prev.filter((d) => d.id !== docId));
+    }
+  }, [dbDocs]);
 
   // ─── Filtered Generated Reports ─────────────────────────────
   const filteredReports = useMemo(() => {
@@ -884,9 +933,26 @@ export default function Reports() {
     return result;
   }, [reportSearch, reportFormatFilter]);
 
+  // ─── Merge DB documents with local mock documents ───────────
+  const allDocs = useMemo(() => {
+    const fromDb: UploadedDocument[] = dbDocs.map((d) => ({
+      id: d.id,
+      fileName: d.fileName,
+      title: d.title,
+      category: d.category as DocumentCategory,
+      description: d.description,
+      tags: d.tags,
+      fileSize: d.fileSize,
+      fileType: d.fileType,
+      uploadedBy: d.uploadedBy,
+      uploadedAt: new Date(d.uploadedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+    }));
+    return [...fromDb, ...uploadedDocs];
+  }, [dbDocs, uploadedDocs]);
+
   // ─── Filtered Documents ─────────────────────────────────────
   const filteredDocs = useMemo(() => {
-    let result = uploadedDocs;
+    let result = allDocs;
     if (docSearch) {
       const q = docSearch.toLowerCase();
       result = result.filter(
@@ -901,7 +967,7 @@ export default function Reports() {
       result = result.filter((d) => d.category === docCategoryFilter);
     }
     return result;
-  }, [uploadedDocs, docSearch, docCategoryFilter]);
+  }, [allDocs, docSearch, docCategoryFilter]);
 
   return (
     <div className="space-y-6">
@@ -969,10 +1035,10 @@ export default function Reports() {
 
               {/* Expandable Report Content */}
               {isExpanded && report.id === 'fleet-health' && (
-                <FleetHealthReport onClose={() => setExpandedReport(null)} />
+                <FleetHealthReport onClose={() => setExpandedReport(null)} allAssets={allAssets} />
               )}
               {isExpanded && report.id === 'puc-filing' && (
-                <PUCFilingReport onClose={() => setExpandedReport(null)} />
+                <PUCFilingReport onClose={() => setExpandedReport(null)} allAssets={allAssets} />
               )}
               {isExpanded && !hasExpandableContent && (
                 <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-6">
@@ -1243,7 +1309,11 @@ export default function Reports() {
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const dbDoc = dbDocs.find((d) => d.id === doc.id);
+                      if (dbDoc?.storagePath) downloadDocument(dbDoc.storagePath, dbDoc.fileName);
+                    }}
                     className="p-1.5 rounded-md text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
                     title="Download"
                   >
@@ -1264,7 +1334,7 @@ export default function Reports() {
         )}
 
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500">
-          {uploadedDocs.length} document{uploadedDocs.length !== 1 ? 's' : ''} in library
+          {allDocs.length} document{allDocs.length !== 1 ? 's' : ''} in library
           {docSearch || docCategoryFilter !== 'all'
             ? ` (${filteredDocs.length} shown)`
             : ''}

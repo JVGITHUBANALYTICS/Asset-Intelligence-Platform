@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Trash2, Download, FileText, XCircle } from 'lucide-react';
-import { mockAssets } from '../data/mockAssets';
+import { getAssets } from '../services/assetService';
 import { RISK_COLORS } from '../utils/constants';
 import Card, { CardHeader } from '../components/UI/Card';
 import Table from '../components/UI/Table';
@@ -13,16 +13,18 @@ interface QueueItem {
   addedAt: string;
 }
 
-const initialQueue: QueueItem[] = [...mockAssets]
-  .sort((a, b) => b.riskScore - a.riskScore)
-  .slice(0, 3)
-  .map((asset) => ({
-    asset,
-    addedAt: new Date().toISOString(),
-  }));
-
 export default function WorkQueue() {
-  const [queue, setQueue] = useState<QueueItem[]>(initialQueue);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+
+  useEffect(() => {
+    getAssets().then((assets) => {
+      const top3 = [...assets]
+        .sort((a, b) => b.riskScore - a.riskScore)
+        .slice(0, 3)
+        .map((asset) => ({ asset, addedAt: new Date().toISOString() }));
+      setQueue(top3);
+    });
+  }, []);
   const navigate = useNavigate();
 
   const removeItem = (assetId: string) => {

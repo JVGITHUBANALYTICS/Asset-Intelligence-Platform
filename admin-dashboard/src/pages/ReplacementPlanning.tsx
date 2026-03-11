@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, DollarSign, TrendingUp, Clock, BarChart3, Zap, FileText, Target, Wallet } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -8,7 +8,8 @@ import Card, { CardHeader } from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import { useTheme } from '../hooks/useTheme';
 import { RISK_COLORS } from '../utils/constants';
-import { mockAssets } from '../data/mockAssets';
+import { getAssets } from '../services/assetService';
+import type { Asset } from '../types';
 
 const stats = [
   { label: 'Planned 2026', value: '324', sub: 'assets scheduled', icon: Calendar, color: 'text-cyan-500' },
@@ -67,6 +68,12 @@ export default function ReplacementPlanning() {
   const gridColor = theme === 'dark' ? '#374151' : '#e5e7eb';
   const textColor = theme === 'dark' ? '#94a3b8' : '#64748b';
 
+  const [allAssets, setAllAssets] = useState<Asset[]>([]);
+
+  useEffect(() => {
+    getAssets().then(setAllAssets);
+  }, []);
+
   // Capital Plan Builder state
   const [planName, setPlanName] = useState('');
   const [planType, setPlanType] = useState<PlanType>('5-Year Plan');
@@ -77,7 +84,7 @@ export default function ReplacementPlanning() {
   const generatePlan = () => {
     const thresholdConfig = RISK_THRESHOLD_OPTIONS.find((opt) => opt.value === riskThreshold);
     const minScore = thresholdConfig?.minScore ?? 0;
-    const filtered = mockAssets.filter((asset) => asset.riskScore > minScore);
+    const filtered = allAssets.filter((asset) => asset.riskScore > minScore);
 
     const totalCost = filtered.reduce((sum, asset) => sum + asset.estimatedCost, 0);
     const avgRiskScore = filtered.length > 0

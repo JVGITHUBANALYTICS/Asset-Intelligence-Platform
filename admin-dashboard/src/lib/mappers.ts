@@ -13,7 +13,13 @@ import type {
   MaintenanceRecord,
   MaintenanceCategory,
   MaintenanceStatus,
+  HealthModel,
+  ModelCategory,
+  ModelStatus,
 } from '../types';
+
+// Re-export types used by services
+export type { HealthModel, ModelCategory, ModelStatus };
 
 // ─── Assets ─────────────────────────────────────────────────────
 
@@ -200,5 +206,53 @@ export function mapDbMaintenanceToMaintenance(row: DbMaintenance): MaintenanceRe
     partsUsed: row.parts_used,
     outageRequired: row.outage_required,
     notes: row.notes,
+  };
+}
+
+// ─── Health Models ─────────────────────────────────────────────
+
+export interface DbHealthModel {
+  id: string;
+  name: string;
+  category: string;
+  algorithm: string;
+  accuracy: number;
+  last_run: string | null;
+  assets_scored: number;
+  icon: string;
+  status: string;
+  version: string;
+  created_by: string;
+  created_date: string;
+  description: string;
+  business_context: string;
+  input_features: string[];
+  output_metric: string;
+  training_data_size: number;
+  refresh_frequency: string;
+  asset_types: string[];
+}
+
+export function mapDbHealthModelToHealthModel(row: DbHealthModel): HealthModel {
+  return {
+    id: row.id,
+    name: row.name,
+    category: row.category as ModelCategory,
+    algorithm: row.algorithm,
+    accuracy: Number(row.accuracy),
+    lastRun: row.last_run ?? 'Never',
+    assetsScored: row.assets_scored,
+    icon: row.icon,
+    status: row.status as ModelStatus,
+    version: row.version,
+    createdBy: row.created_by,
+    createdDate: row.created_date,
+    description: row.description,
+    businessContext: row.business_context,
+    inputFeatures: row.input_features,
+    outputMetric: row.output_metric,
+    trainingDataSize: row.training_data_size,
+    refreshFrequency: row.refresh_frequency,
+    assetTypes: row.asset_types,
   };
 }

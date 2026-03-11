@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getAssets } from '../services/assetService';
-import { mockChartData } from '../data/mockStats';
 import ActivityFeed from '../components/Dashboard/ActivityFeed';
 import Card, { CardHeader } from '../components/UI/Card';
 import Button from '../components/UI/Button';
@@ -106,6 +105,18 @@ export default function Dashboard() {
     [...allAssets].sort((a, b) => b.riskScore - a.riskScore).slice(0, 5),
     [allAssets],
   );
+
+  const healthDistribution = useMemo(() => {
+    const buckets: Record<string, number> = { Critical: 0, 'High Risk': 0, 'Medium Risk': 0, 'Low Risk': 0, Healthy: 0 };
+    for (const a of allAssets) {
+      if (a.riskLevel === 'critical') buckets['Critical']++;
+      else if (a.riskLevel === 'high') buckets['High Risk']++;
+      else if (a.riskLevel === 'medium') buckets['Medium Risk']++;
+      else if (a.riskLevel === 'low') buckets['Low Risk']++;
+      else buckets['Healthy']++;
+    }
+    return Object.entries(buckets).map(([name, count]) => ({ name, count }));
+  }, [allAssets]);
 
   const tooltipStyle = {
     backgroundColor: isDark ? '#1f2937' : '#ffffff',
@@ -226,7 +237,7 @@ export default function Dashboard() {
           <div className="w-full h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={mockChartData}
+                data={healthDistribution}
                 margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -248,7 +259,7 @@ export default function Dashboard() {
                   cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}
                 />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={48}>
-                  {mockChartData.map((entry) => (
+                  {healthDistribution.map((entry) => (
                     <Cell
                       key={entry.name}
                       fill={barChartColors[entry.name] || '#6b7280'}
