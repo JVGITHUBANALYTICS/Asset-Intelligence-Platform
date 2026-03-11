@@ -120,7 +120,7 @@ export default function Login() {
           <LoginForm onSuccess={() => navigate('/')} />
 
           <p className="mt-6 text-xs text-gray-400 dark:text-gray-500 text-center">
-            Demo credentials are pre-filled. Just click "Sign in".
+            Authorized utility personnel only.
           </p>
         </div>
       </div>

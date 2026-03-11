@@ -70,19 +70,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (credentials: LoginCredentials): Promise<boolean> => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({
       email: credentials.email,
       password: credentials.password,
     });
+
+    if (error || !signInData.user) {
+      setIsLoading(false);
+      return false;
+    }
+
+    // Set user immediately so navigation works (don't wait for onAuthStateChange)
+    const profile = await fetchProfile(signInData.user.id);
+    setUser({
+      id: signInData.user.id,
+      name: profile.name ?? signInData.user.user_metadata?.name ?? '',
+      email: signInData.user.email ?? '',
+      role: (profile.role as AuthUser['role']) ?? 'viewer',
+      title: profile.title ?? '',
+      organization: profile.organization ?? '',
+    });
     setIsLoading(false);
-    return !error;
+    return true;
   };
 
   const register = async (data: RegisterData): Promise<boolean> => {
     if (data.password !== data.confirmPassword) return false;
 
     setIsLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
@@ -94,8 +110,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       },
     });
+
+    if (error || !signUpData.user) {
+      setIsLoading(false);
+      return false;
+    }
+
+    // Set user immediately so navigation works
+    const profile = await fetchProfile(signUpData.user.id);
+    setUser({
+      id: signUpData.user.id,
+      name: profile.name ?? data.name,
+      email: signUpData.user.email ?? data.email,
+      role: (profile.role as AuthUser['role']) ?? 'viewer',
+      title: profile.title ?? '',
+      organization: profile.organization ?? 'PPL Electric Utilities',
+    });
     setIsLoading(false);
-    return !error;
+    return true;
   };
 
   const logout = () => {
