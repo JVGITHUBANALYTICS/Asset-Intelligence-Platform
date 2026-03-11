@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Search, Filter, Database, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, X, FileText, MapPin, Calendar, Cpu, Shield, Zap, Download, ArrowUpDown, AlertTriangle, Activity, DollarSign } from 'lucide-react';
-import { mockAssets } from '../data/mockAssets';
+import { getAssets } from '../services/assetService';
 import { formatDate, formatCurrency } from '../utils/helpers';
 import { RISK_COLORS, ASSET_CLASS_COLORS, VOLTAGE_CLASS_COLORS, HEALTH_THRESHOLDS } from '../utils/constants';
 import Card, { CardHeader } from '../components/UI/Card';
@@ -37,6 +37,8 @@ type SortKey = 'id' | 'type' | 'location' | 'age' | 'healthScore' | 'riskLevel' 
 type SortDir = 'asc' | 'desc';
 
 export default function Assets() {
+  const [allAssets, setAllAssets] = useState<Asset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [voltageFilter, setVoltageFilter] = useState<string>('all');
@@ -51,8 +53,21 @@ export default function Assets() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
+  // Fetch assets from service (Supabase or mock fallback)
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    getAssets().then((data) => {
+      if (!cancelled) {
+        setAllAssets(data);
+        setIsLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const filteredAssets = useMemo(() => {
-    return mockAssets.filter((asset) => {
+    return allAssets.filter((asset) => {
       const matchesSearch =
         asset.id.toLowerCase().includes(search.toLowerCase()) ||
         asset.type.toLowerCase().includes(search.toLowerCase()) ||
@@ -63,7 +78,7 @@ export default function Assets() {
       const matchesRisk = riskFilter === 'all' || asset.riskLevel === riskFilter;
       return matchesSearch && matchesType && matchesVoltage && matchesRisk;
     });
-  }, [search, typeFilter, voltageFilter, riskFilter]);
+  }, [allAssets, search, typeFilter, voltageFilter, riskFilter]);
 
   const sortedAssets = useMemo(() => {
     if (!sortKey) return filteredAssets;
@@ -205,14 +220,15 @@ export default function Assets() {
 
   // ─── KPI Summary ──────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const total = mockAssets.length;
-    const critical = mockAssets.filter((a) => a.riskLevel === 'critical').length;
-    const highRisk = mockAssets.filter((a) => a.riskLevel === 'high').length;
-    const avgHealth = Math.round(mockAssets.reduce((sum, a) => sum + a.healthScore, 0) / total);
-    const avgAge = Math.round(mockAssets.reduce((sum, a) => sum + a.age, 0) / total * 10) / 10;
-    const totalReplacementCost = mockAssets.reduce((sum, a) => sum + a.estimatedCost, 0);
+    const total = allAssets.length;
+    if (total === 0) return { total: 0, critical: 0, highRisk: 0, avgHealth: 0, avgAge: 0, totalReplacementCost: 0 };
+    const critical = allAssets.filter((a) => a.riskLevel === 'critical').length;
+    const highRisk = allAssets.filter((a) => a.riskLevel === 'high').length;
+    const avgHealth = Math.round(allAssets.reduce((sum, a) => sum + a.healthScore, 0) / total);
+    const avgAge = Math.round(allAssets.reduce((sum, a) => sum + a.age, 0) / total * 10) / 10;
+    const totalReplacementCost = allAssets.reduce((sum, a) => sum + a.estimatedCost, 0);
     return { total, critical, highRisk, avgHealth, avgAge, totalReplacementCost };
-  }, []);
+  }, [allAssets]);
 
   const SortHeader = ({ label, colKey, className }: { label: string; colKey: SortKey; className?: string }) => (
     <button
@@ -452,7 +468,7 @@ export default function Assets() {
           </div>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-          Showing {filteredAssets.length} of {mockAssets.length} assets
+          Showing {filteredAssets.length} of {allAssets.length} assets
           {selectedIds.size > 0 && (
             <span className="ml-2 text-cyan-600 dark:text-cyan-400 font-medium">
               ({selectedIds.size} selected)

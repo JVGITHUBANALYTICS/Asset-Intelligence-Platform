@@ -235,6 +235,28 @@ ALTER TABLE public.work_queue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.generated_reports ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies (idempotent)
+DROP POLICY IF EXISTS "Anyone can read profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Auth read assets" ON public.assets;
+DROP POLICY IF EXISTS "Auth read inspections" ON public.inspections;
+DROP POLICY IF EXISTS "Auth read dga_tests" ON public.dga_tests;
+DROP POLICY IF EXISTS "Auth read maintenance" ON public.maintenance;
+DROP POLICY IF EXISTS "Auth read health_models" ON public.health_models;
+DROP POLICY IF EXISTS "Auth read alerts" ON public.activity_alerts;
+DROP POLICY IF EXISTS "Auth read documents" ON public.documents;
+DROP POLICY IF EXISTS "Auth read reports" ON public.generated_reports;
+DROP POLICY IF EXISTS "Managers write assets" ON public.assets;
+DROP POLICY IF EXISTS "Managers update assets" ON public.assets;
+DROP POLICY IF EXISTS "Managers write inspections" ON public.inspections;
+DROP POLICY IF EXISTS "Managers write maintenance" ON public.maintenance;
+DROP POLICY IF EXISTS "Auth read work_queue" ON public.work_queue;
+DROP POLICY IF EXISTS "Auth insert work_queue" ON public.work_queue;
+DROP POLICY IF EXISTS "Users delete own queue items" ON public.work_queue;
+DROP POLICY IF EXISTS "Managers upload documents" ON public.documents;
+DROP POLICY IF EXISTS "Owner or admin delete documents" ON public.documents;
+DROP POLICY IF EXISTS "Managers create reports" ON public.generated_reports;
+
 -- Profiles: read all, update own
 CREATE POLICY "Anyone can read profiles" ON public.profiles
   FOR SELECT USING (auth.role() = 'authenticated');
