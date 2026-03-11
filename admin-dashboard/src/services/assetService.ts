@@ -30,7 +30,7 @@ export async function getAssets(filters?: {
     query = query.eq('risk_level', filters.riskLevel);
   }
 
-  const { data, error } = await query.returns<DbAsset[]>();
+  const { data, error } = await query.limit(2000).returns<DbAsset[]>();
 
   if (error) {
     console.error('Failed to fetch assets:', error.message);

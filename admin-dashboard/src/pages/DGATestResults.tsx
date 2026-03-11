@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Search, Filter, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, X, Download, ArrowUpDown, FlaskConical } from 'lucide-react';
-import { mockDGATests } from '../data/mockDGATests';
+import { getDGATests } from '../services/dgaService';
 import { formatDate } from '../utils/helpers';
 import Card from '../components/UI/Card';
 import Table from '../components/UI/Table';
@@ -43,6 +43,7 @@ type SortKey = 'id' | 'assetId' | 'assetType' | 'location' | 'sampleDate' | 'lab
 type SortDir = 'asc' | 'desc';
 
 export default function DGATestResults() {
+  const [allRecords, setAllRecords] = useState<DGATestResult[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [diagnosisFilter, setDiagnosisFilter] = useState<string>('all');
@@ -55,8 +56,14 @@ export default function DGATestResults() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
+  useEffect(() => {
+    let cancelled = false;
+    getDGATests().then((data) => { if (!cancelled) setAllRecords(data); });
+    return () => { cancelled = true; };
+  }, []);
+
   const filteredRecords = useMemo(() => {
-    return mockDGATests.filter((r) => {
+    return allRecords.filter((r) => {
       const s = search.toLowerCase();
       const matchesSearch =
         r.id.toLowerCase().includes(s) ||
@@ -167,13 +174,14 @@ export default function DGATestResults() {
 
   // ─── KPI Summary ──────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const total = mockDGATests.length;
-    const critical = mockDGATests.filter((r) => r.diagnosis === 'Critical').length;
-    const warning = mockDGATests.filter((r) => r.diagnosis === 'Warning').length;
-    const deteriorating = mockDGATests.filter((r) => r.trend === 'Deteriorating').length;
-    const avgTDCG = Math.round(mockDGATests.reduce((sum, r) => sum + r.tdcg, 0) / total);
+    const total = allRecords.length;
+    if (total === 0) return { total: 0, critical: 0, warning: 0, deteriorating: 0, avgTDCG: 0 };
+    const critical = allRecords.filter((r) => r.diagnosis === 'Critical').length;
+    const warning = allRecords.filter((r) => r.diagnosis === 'Warning').length;
+    const deteriorating = allRecords.filter((r) => r.trend === 'Deteriorating').length;
+    const avgTDCG = Math.round(allRecords.reduce((sum, r) => sum + r.tdcg, 0) / total);
     return { total, critical, warning, deteriorating, avgTDCG };
-  }, []);
+  }, [allRecords]);
 
   // ─── Gas level color helper ───────────────────────────────────
   const gasColor = (value: number, thresholds: [number, number, number]) => {
@@ -385,7 +393,7 @@ export default function DGATestResults() {
           </div>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-          Showing {filteredRecords.length} of {mockDGATests.length} test results
+          Showing {filteredRecords.length} of {allRecords.length} test results
         </p>
 
         {/* Active Filter Pills */}

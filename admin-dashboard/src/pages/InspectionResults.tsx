@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Search, Filter, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, X, Download, ArrowUpDown, ClipboardCheck, Eye } from 'lucide-react';
-import { mockInspections } from '../data/mockInspections';
+import { getInspections } from '../services/inspectionService';
 import { formatDate } from '../utils/helpers';
 import { ASSET_CLASS_COLORS } from '../utils/constants';
 import Card from '../components/UI/Card';
@@ -45,6 +45,7 @@ type SortKey = 'id' | 'assetId' | 'assetType' | 'location' | 'inspector' | 'insp
 type SortDir = 'asc' | 'desc';
 
 export default function InspectionResults() {
+  const [allRecords, setAllRecords] = useState<InspectionResult[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [conditionFilter, setConditionFilter] = useState<string>('all');
@@ -57,8 +58,14 @@ export default function InspectionResults() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
+  useEffect(() => {
+    let cancelled = false;
+    getInspections().then((data) => { if (!cancelled) setAllRecords(data); });
+    return () => { cancelled = true; };
+  }, []);
+
   const filteredRecords = useMemo(() => {
-    return mockInspections.filter((r) => {
+    return allRecords.filter((r) => {
       const s = search.toLowerCase();
       const matchesSearch =
         r.id.toLowerCase().includes(s) ||
@@ -166,12 +173,13 @@ export default function InspectionResults() {
 
   // ─── KPI Summary ──────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const total = mockInspections.length;
-    const critical = mockInspections.filter((r) => r.overallCondition === 'Critical').length;
-    const poor = mockInspections.filter((r) => r.overallCondition === 'Poor').length;
-    const overdue = mockInspections.filter((r) => r.nextInspectionDue < '2026-02-01').length;
+    const total = allRecords.length;
+    if (total === 0) return { total: 0, critical: 0, poor: 0, overdue: 0 };
+    const critical = allRecords.filter((r) => r.overallCondition === 'Critical').length;
+    const poor = allRecords.filter((r) => r.overallCondition === 'Poor').length;
+    const overdue = allRecords.filter((r) => r.nextInspectionDue < '2026-02-01').length;
     return { total, critical, poor, overdue };
-  }, []);
+  }, [allRecords]);
 
   const SortHeader = ({ label, colKey, className }: { label: string; colKey: SortKey; className?: string }) => (
     <button
@@ -365,7 +373,7 @@ export default function InspectionResults() {
           </div>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-          Showing {filteredRecords.length} of {mockInspections.length} inspection records
+          Showing {filteredRecords.length} of {allRecords.length} inspection records
         </p>
 
         {/* Active Filter Pills */}

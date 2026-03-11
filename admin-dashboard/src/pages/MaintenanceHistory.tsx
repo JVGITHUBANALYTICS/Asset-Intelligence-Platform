@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Search, Filter, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, X, Download, ArrowUpDown, Wrench, Clock, DollarSign } from 'lucide-react';
-import { mockMaintenance } from '../data/mockMaintenance';
+import { getMaintenanceRecords } from '../services/maintenanceService';
 import { formatDate, formatCurrency } from '../utils/helpers';
 import { ASSET_CLASS_COLORS, VOLTAGE_CLASS_COLORS } from '../utils/constants';
 import Card from '../components/UI/Card';
@@ -40,6 +40,7 @@ type SortKey = 'id' | 'assetId' | 'assetType' | 'location' | 'category' | 'workO
 type SortDir = 'asc' | 'desc';
 
 export default function MaintenanceHistory() {
+  const [allRecords, setAllRecords] = useState<MaintenanceRecord[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [voltageFilter, setVoltageFilter] = useState<string>('all');
@@ -52,8 +53,14 @@ export default function MaintenanceHistory() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
+  useEffect(() => {
+    let cancelled = false;
+    getMaintenanceRecords().then((data) => { if (!cancelled) setAllRecords(data); });
+    return () => { cancelled = true; };
+  }, []);
+
   const filteredRecords = useMemo(() => {
-    return mockMaintenance.filter((r) => {
+    return allRecords.filter((r) => {
       const s = search.toLowerCase();
       const matchesSearch =
         r.id.toLowerCase().includes(s) ||
@@ -165,14 +172,16 @@ export default function MaintenanceHistory() {
 
   // ─── KPI Summary ──────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const total = mockMaintenance.length;
-    const preventive = mockMaintenance.filter((r) => r.category === 'Preventive').length;
-    const unplanned = mockMaintenance.filter((r) => r.category === 'Repair - Unplanned').length;
-    const inProgress = mockMaintenance.filter((r) => r.status === 'In Progress').length;
-    const totalCost = mockMaintenance.reduce((sum, r) => sum + r.cost, 0);
-    const avgDuration = Math.round(mockMaintenance.filter((r) => r.status === 'Completed').reduce((sum, r) => sum + r.duration, 0) / mockMaintenance.filter((r) => r.status === 'Completed').length * 10) / 10;
+    const total = allRecords.length;
+    if (total === 0) return { total: 0, preventive: 0, unplanned: 0, inProgress: 0, totalCost: 0, avgDuration: 0 };
+    const preventive = allRecords.filter((r) => r.category === 'Preventive').length;
+    const unplanned = allRecords.filter((r) => r.category === 'Repair - Unplanned').length;
+    const inProgress = allRecords.filter((r) => r.status === 'In Progress').length;
+    const totalCost = allRecords.reduce((sum, r) => sum + r.cost, 0);
+    const completed = allRecords.filter((r) => r.status === 'Completed');
+    const avgDuration = completed.length > 0 ? Math.round(completed.reduce((sum, r) => sum + r.duration, 0) / completed.length * 10) / 10 : 0;
     return { total, preventive, unplanned, inProgress, totalCost, avgDuration };
-  }, []);
+  }, [allRecords]);
 
   const SortHeader = ({ label, colKey, className }: { label: string; colKey: SortKey; className?: string }) => (
     <button
@@ -371,7 +380,7 @@ export default function MaintenanceHistory() {
           </div>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-          Showing {filteredRecords.length} of {mockMaintenance.length} maintenance records
+          Showing {filteredRecords.length} of {allRecords.length} maintenance records
         </p>
 
         {/* Active Filter Pills */}
