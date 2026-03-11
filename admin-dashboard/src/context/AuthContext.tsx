@@ -41,6 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
       setIsLoading(false);
+    }).catch((err) => {
+      console.error('Failed to get session:', err);
+      setIsLoading(false);
     });
 
     // Subscribe to future auth changes
