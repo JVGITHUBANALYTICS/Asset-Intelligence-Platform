@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Calendar, DollarSign, TrendingUp, Clock, BarChart3, Zap, FileText, Target, Wallet } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -11,40 +11,7 @@ import { RISK_COLORS } from '../utils/constants';
 import { getAssets } from '../services/assetService';
 import type { Asset } from '../types';
 
-const stats = [
-  { label: 'Planned 2026', value: '324', sub: 'assets scheduled', icon: Calendar, color: 'text-cyan-500' },
-  { label: 'Budget', value: '$47.2M', sub: 'approved funding', icon: DollarSign, color: 'text-green-500' },
-  { label: 'Allocated', value: '89%', sub: 'of total budget', icon: TrendingUp, color: 'text-purple-500' },
-  { label: 'Backlog', value: '1,523', sub: 'assets pending', icon: Clock, color: 'text-orange-500' },
-  { label: 'Peak Quarter', value: 'Q2 2026', sub: 'highest spend', icon: BarChart3, color: 'text-blue-500' },
-];
-
-const forecastData = [
-  { year: '2026', transformers: 12.4, breakers: 5.8, cables: 3.2, other: 2.1 },
-  { year: '2027', transformers: 14.1, breakers: 6.2, cables: 4.5, other: 2.8 },
-  { year: '2028', transformers: 16.8, breakers: 7.1, cables: 5.1, other: 3.4 },
-  { year: '2029', transformers: 19.2, breakers: 8.4, cables: 5.8, other: 4.1 },
-  { year: '2030', transformers: 22.5, breakers: 9.7, cables: 6.9, other: 4.8 },
-];
-
-const budgetData = [
-  { name: 'Transformers', value: 21.2, color: '#06b6d4' },
-  { name: 'Circuit Breakers', value: 8.4, color: '#8b5cf6' },
-  { name: 'Underground Cable', value: 7.8, color: '#f59e0b' },
-  { name: 'Switchgear', value: 5.2, color: '#10b981' },
-  { name: 'Other', value: 4.6, color: '#6b7280' },
-];
-
-const replacementTable = [
-  { rank: 1, id: 'TX-4401', type: 'Power Transformer', location: 'Riverside Substation', riskLevel: 'critical' as const, quarter: 'Q1 2026', cost: '$4.2M', consequence: 'High' },
-  { rank: 2, id: 'TX-3350', type: 'Power Transformer', location: 'Valley View Sub', riskLevel: 'critical' as const, quarter: 'Q1 2026', cost: '$2.9M', consequence: 'High' },
-  { rank: 3, id: 'TX-2287', type: 'Power Transformer', location: 'Northgate Station', riskLevel: 'critical' as const, quarter: 'Q2 2026', cost: '$3.8M', consequence: 'High' },
-  { rank: 4, id: 'CB-0819', type: 'Circuit Breaker', location: 'Elm Creek Substation', riskLevel: 'high' as const, quarter: 'Q2 2026', cost: '$850K', consequence: 'Medium' },
-  { rank: 5, id: 'CB-1145', type: 'Circuit Breaker', location: 'Oakmont Substation', riskLevel: 'high' as const, quarter: 'Q3 2026', cost: '$620K', consequence: 'Medium' },
-  { rank: 6, id: 'DS-0334', type: 'Disconnect Switch', location: 'Riverside Substation', riskLevel: 'high' as const, quarter: 'Q3 2026', cost: '$320K', consequence: 'Medium' },
-  { rank: 7, id: 'DT-7720', type: 'Dist Transformer', location: 'Industrial Park Feeder 12', riskLevel: 'high' as const, quarter: 'Q4 2026', cost: '$185K', consequence: 'Low' },
-  { rank: 8, id: 'UC-0088', type: 'Underground Cable', location: 'Downtown Loop Section 3', riskLevel: 'medium' as const, quarter: 'Q4 2026', cost: '$1.5M', consequence: 'Medium' },
-];
+// (stats, forecasts, budget, and replacement table computed from DB assets below)
 
 type PlanType = '5-Year Plan' | 'Annual Plan' | 'Emergency Replacement';
 type RiskThreshold = 'critical' | 'high' | 'medium' | 'all';
@@ -73,6 +40,74 @@ export default function ReplacementPlanning() {
   useEffect(() => {
     getAssets().then(setAllAssets);
   }, []);
+
+  // Compute stats from real assets
+  const criticalHighAssets = useMemo(() =>
+    allAssets.filter((a) => a.riskLevel === 'critical' || a.riskLevel === 'high'),
+    [allAssets],
+  );
+
+  const totalReplacementCost = useMemo(() =>
+    criticalHighAssets.reduce((sum, a) => sum + a.estimatedCost, 0),
+    [criticalHighAssets],
+  );
+
+  const stats = useMemo(() => [
+    { label: 'At-Risk Assets', value: criticalHighAssets.length.toLocaleString(), sub: 'critical + high risk', icon: Calendar, color: 'text-cyan-500' },
+    { label: 'Total Cost', value: `$${(totalReplacementCost / 1_000_000).toFixed(1)}M`, sub: 'estimated replacement', icon: DollarSign, color: 'text-green-500' },
+    { label: 'Critical', value: allAssets.filter((a) => a.riskLevel === 'critical').length.toLocaleString(), sub: 'immediate action needed', icon: TrendingUp, color: 'text-red-500' },
+    { label: 'High Risk', value: allAssets.filter((a) => a.riskLevel === 'high').length.toLocaleString(), sub: 'planned replacement', icon: Clock, color: 'text-orange-500' },
+    { label: 'Total Fleet', value: allAssets.length.toLocaleString(), sub: 'monitored assets', icon: BarChart3, color: 'text-blue-500' },
+  ], [allAssets, criticalHighAssets, totalReplacementCost]);
+
+  // Forecast data computed from asset type cost breakdown
+  const forecastData = useMemo(() => {
+    const typeCosts: Record<string, number> = {};
+    for (const a of criticalHighAssets) {
+      const key = a.type.includes('Transformer') ? 'transformers'
+        : a.type.includes('Breaker') ? 'breakers'
+        : a.type.includes('Cable') ? 'cables' : 'other';
+      typeCosts[key] = (typeCosts[key] || 0) + a.estimatedCost;
+    }
+    const base = { transformers: (typeCosts.transformers || 0) / 1e6, breakers: (typeCosts.breakers || 0) / 1e6, cables: (typeCosts.cables || 0) / 1e6, other: (typeCosts.other || 0) / 1e6 };
+    return [
+      { year: '2026', transformers: Math.round(base.transformers * 0.2 * 10) / 10, breakers: Math.round(base.breakers * 0.2 * 10) / 10, cables: Math.round(base.cables * 0.2 * 10) / 10, other: Math.round(base.other * 0.2 * 10) / 10 },
+      { year: '2027', transformers: Math.round(base.transformers * 0.22 * 10) / 10, breakers: Math.round(base.breakers * 0.22 * 10) / 10, cables: Math.round(base.cables * 0.22 * 10) / 10, other: Math.round(base.other * 0.22 * 10) / 10 },
+      { year: '2028', transformers: Math.round(base.transformers * 0.25 * 10) / 10, breakers: Math.round(base.breakers * 0.25 * 10) / 10, cables: Math.round(base.cables * 0.25 * 10) / 10, other: Math.round(base.other * 0.25 * 10) / 10 },
+      { year: '2029', transformers: Math.round(base.transformers * 0.28 * 10) / 10, breakers: Math.round(base.breakers * 0.28 * 10) / 10, cables: Math.round(base.cables * 0.28 * 10) / 10, other: Math.round(base.other * 0.28 * 10) / 10 },
+      { year: '2030', transformers: Math.round(base.transformers * 0.32 * 10) / 10, breakers: Math.round(base.breakers * 0.32 * 10) / 10, cables: Math.round(base.cables * 0.32 * 10) / 10, other: Math.round(base.other * 0.32 * 10) / 10 },
+    ];
+  }, [criticalHighAssets]);
+
+  // Budget allocation pie - computed from asset type costs
+  const budgetData = useMemo(() => {
+    const colors: Record<string, string> = { 'Power Transformer': '#06b6d4', 'Circuit Breaker': '#8b5cf6', 'Underground Cable': '#f59e0b', 'Disconnect Switch': '#10b981' };
+    const groups: Record<string, number> = {};
+    for (const a of criticalHighAssets) {
+      groups[a.type] = (groups[a.type] || 0) + a.estimatedCost;
+    }
+    return Object.entries(groups)
+      .map(([name, cost]) => ({ name, value: Math.round((cost / 1e6) * 10) / 10, color: colors[name] || '#6b7280' }))
+      .sort((a, b) => b.value - a.value);
+  }, [criticalHighAssets]);
+
+  // Replacement table - top assets by risk score
+  const replacementTable = useMemo(() => {
+    const quarters = ['Q1 2026', 'Q1 2026', 'Q2 2026', 'Q2 2026', 'Q3 2026', 'Q3 2026', 'Q4 2026', 'Q4 2026'];
+    return [...allAssets]
+      .sort((a, b) => b.riskScore - a.riskScore)
+      .slice(0, 8)
+      .map((a, i) => ({
+        rank: i + 1,
+        id: a.id,
+        type: a.type,
+        location: a.location,
+        riskLevel: a.riskLevel,
+        quarter: quarters[i] || 'Q4 2026',
+        cost: a.estimatedCost >= 1e6 ? `$${(a.estimatedCost / 1e6).toFixed(1)}M` : `$${(a.estimatedCost / 1e3).toFixed(0)}K`,
+        consequence: a.riskLevel === 'critical' ? 'High' : a.riskLevel === 'high' ? 'Medium' : 'Low',
+      }));
+  }, [allAssets]);
 
   // Capital Plan Builder state
   const [planName, setPlanName] = useState('');
