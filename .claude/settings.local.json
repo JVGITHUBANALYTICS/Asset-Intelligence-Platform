@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite build)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(npx vite:*)",
+      "Bash(dir \"C:\\\\Users\\\\Juan Vazquez\\\\Claude\\\\Asset Intelligence Platform\")"
+    ]
+  }
+}

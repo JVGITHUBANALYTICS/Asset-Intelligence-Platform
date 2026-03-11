@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Intelligence Platform - PPL Electric Utilities</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --dark: #0a0e1a;
+            --darker: #060a14;
+            --card: #131a2e;
+            --elevated: #1a2440;
+            --cyan: #06b6d4;
+            --purple: #8b5cf6;
+            --red: #ef4444;
+            --orange: #f59e0b;
+            --yellow: #eab308;
+            --green: #10b981;
+            --text: #e2e8f0;
+            --dim: #94a3b8;
+            --border: #1e293b;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--darker);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        header {
+            background: linear-gradient(135deg, var(--dark), #0f1729);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1920px;
+            margin: 0 auto;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+        }
+        nav {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+            max-width: 1920px;
+            margin: 0 auto;
+        }
+        .nav-tab {
+            padding: 1rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--dim);
+            cursor: pointer;
+            font-size: 0.9375rem;
+            transition: all 0.2s;
+        }
+        .nav-tab:hover {
+            color: var(--text);
+            border-bottom-color: var(--cyan);
+        }
+        .nav-tab.active {
+            color: var(--cyan);
+            border-bottom-color: var(--cyan);
+        }
+        .container {
+            max-width: 1920px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .card:hover {
+            border-color: var(--cyan);
+        }
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            font-family: 'Space Grotesk', sans-serif;
+            margin-bottom: 1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-size: 0.75rem;
+            color: var(--dim);
+            text-transform: uppercase;
+            background: var(--elevated);
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+        }
+        tr:hover {
+            background: var(--elevated);
+        }
+        .asset-id {
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 600;
+            color: var(--cyan);
+        }
+        .badge {
+            padding: 0.375rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-align: center;
+            display: inline-block;
+        }
+        .critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+            border: 1px solid var(--red);
+        }
+        .high {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--orange);
+            border: 1px solid var(--orange);
+        }
+        .medium {
+            background: rgba(234, 179, 8, 0.15);
+            color: var(--yellow);
+            border: 1px solid var(--yellow);
+        }
+        .low {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--green);
+            border: 1px solid var(--green);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(6, 182, 212, 0.3);
+        }
+        .btn-secondary {
+            background: var(--elevated);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            border-color: var(--cyan);
+        }
+        .btn-danger {
+            background: var(--red);
+            color: white;
+        }
+        .btn-success {
+            background: var(--green);
+            color: white;
+        }
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-input, .filter-select {
+            padding: 0.75rem 1rem;
+            background: var(--elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.875rem;
+        }
+        .filter-input::placeholder {
+            color: var(--dim);
+        }
+        .filter-input {
+            flex: 1;
+            min-width: 300px;
+        }
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--cyan);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: 'Space Grotesk', sans-serif;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .page-subtitle {
+            color: var(--dim);
+            margin-bottom: 2rem;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .close-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--elevated);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-btn:hover {
+            background: var(--red);
+            border-color: var(--red);
+            color: white;
+        }
+        .modal-body {
+            padding: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.875rem;
+            font-family: 'Inter', sans-serif;
+        }
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        .selected-count {
+            background: var(--cyan);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .plan-summary {
+            background: var(--elevated);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+        .plan-item {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .notes-section {
+            background: var(--elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .note-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+        }
+        .note-item:last-child {
+            border-bottom: none;
+        }
+        .note-meta {
+            color: var(--dim);
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+        .assessment-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+        .detail-section {
+            margin-bottom: 2rem;
+        }
+        .detail-label {
+            font-size: 0.75rem;
+            color: var(--dim);
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+        .detail-value {
+            font-size: 1rem;
+            color: var(--text);
+            font-weight: 600;
+        }
+        .risk-assessment {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .risk-factor {
+            text-align: center;
+            padding: 1rem;
+            background: var(--elevated);
+            border-radius: 8px;
+        }
+        .risk-factor-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+        .risk-factor-label {
+            font-size: 0.75rem;
+            color: var(--dim);
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">⚡</div>
+                <span>Asset Intelligence Platform</span>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <span style="padding: 0.5rem 1rem; background: var(--elevated); border: 1px solid var(--cyan); border-radius: 8px; font-size: 0.875rem; color: var(--cyan);">PPL Electric Utilities</span>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 8px; height: 8px; background: var(--green); border-radius: 50%;"></div>
+                    <span style="font-size: 0.875rem; color: var(--dim);">Sarah Chen • Asset Manager</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <nav>
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('assessment')">Asset Assessment</button>
+            <button class="nav-tab" onclick="switchTab('workqueue')">Work Queue</button>
+            <button class="nav-tab" onclick="switchTab('planner')">Capital Planner</button>
+            <button class="nav-tab" onclick="switchTab('plans')">My Plans</button>
+            <button class="nav-tab" onclick="switchTab('reports')">Reports</button>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <!-- Asset Assessment Tab -->
+        <div id="assessment-tab" class="tab-content active">
+            <h1 class="page-title">Asset Assessment & Risk Evaluation</h1>
+            <p class="page-subtitle">Review asset conditions, add engineering notes, and flag for capital planning</p>
+            
+            <div class="filter-bar">
+                <input type="text" class="filter-input" id="searchInput" placeholder="🔍 Search by Asset ID, Type, Location...">
+                <select class="filter-select" id="assetClassFilter">
+                    <option value="">All Asset Classes</option>
+                    <option value="Power Transformer">Power Transformers</option>
+                    <option value="Circuit Breaker">Circuit Breakers</option>
+                    <option value="Dist Transformer">Distribution Transformers</option>
+                </select>
+                <select class="filter-select" id="riskLevelFilter">
+                    <option value="">All Risk Levels</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+                <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+            </div>
+            
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div>Showing <span id="assetCount">0</span> assets</div>
+                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <span id="selectedCount" class="selected-count" style="display: none;">0 selected</span>
+                        <button class="btn btn-primary" onclick="bulkAddToQueue()" id="bulkAddBtn" style="display: none;">➕ Add Selected to Work Queue</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" class="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                            <th>Asset ID</th>
+                            <th>Type</th>
+                            <th>Location</th>
+                            <th>Age</th>
+                            <th>Health</th>
+                            <th>Risk</th>
+                            <th>Last Assessment</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assetsTable">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Work Queue Tab -->
+        <div id="workqueue-tab" class="tab-content">
+            <h1 class="page-title">My Work Queue</h1>
+            <p class="page-subtitle">Assets flagged for detailed assessment and capital planning consideration</p>
+            
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="createPlanFromQueue()">📋 Create Capital Plan from Queue</button>
+                <button class="btn btn-secondary" onclick="exportQueue()">📥 Export Queue</button>
+                <button class="btn btn-danger" onclick="clearQueue()">🗑️ Clear Queue</button>
+            </div>
+            
+            <div class="card">
+                <div style="margin-bottom: 1rem;">
+                    Queue contains <span id="queueCount" style="font-weight: 700; color: var(--cyan);">0</span> assets
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Asset ID</th>
+                            <th>Type</th>
+                            <th>Location</th>
+                            <th>Health</th>
+                            <th>Risk Score</th>
+                            <th>Est. Cost</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="queueTable">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Capital Planner Tab -->
+        <div id="planner-tab" class="tab-content">
+            <h1 class="page-title">Capital Plan Builder</h1>
+            <p class="page-subtitle">Create and optimize multi-year capital replacement programs</p>
+            
+            <div class="card">
+                <h3 class="card-title">Create New Plan</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">Plan Name</label>
+                        <input type="text" class="form-input" id="planName" placeholder="e.g., FY2026-2030 Base Case">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Plan Type</label>
+                        <select class="form-select" id="planType">
+                            <option value="5year">5-Year Plan</option>
+                            <option value="annual">Annual Plan</option>
+                            <option value="emergency">Emergency Replacement</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Budget ($M)</label>
+                        <input type="number" class="form-input" id="planBudget" placeholder="e.g., 45.0">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Plan Description</label>
+                    <textarea class="form-textarea" id="planDescription" placeholder="Describe the objectives and scope of this capital plan..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Risk Threshold</label>
+                    <select class="form-select" id="riskThreshold">
+                        <option value="80">Critical Only (Risk > 80)</option>
+                        <option value="60">High & Critical (Risk > 60)</option>
+                        <option value="40">Medium+ (Risk > 40)</option>
+                        <option value="0">All Assets</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" onclick="generatePlan()">🎯 Generate Optimized Plan</button>
+            </div>
+            
+            <div id="generatedPlan" style="display: none;">
+                <div class="card">
+                    <h3 class="card-title">Generated Plan Summary</h3>
+                    <div class="plan-summary">
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--dim); margin-bottom: 0.5rem;">TOTAL ASSETS</div>
+                                <div id="planTotalAssets" style="font-size: 2rem; font-weight: 700; color: var(--cyan);">0</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--dim); margin-bottom: 0.5rem;">TOTAL COST</div>
+                                <div id="planTotalCost" style="font-size: 2rem; font-weight: 700; color: var(--cyan);">$0M</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--dim); margin-bottom: 0.5rem;">AVG RISK</div>
+                                <div id="planAvgRisk" style="font-size: 2rem; font-weight: 700; color: var(--red);">0</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--dim); margin-bottom: 0.5rem;">BUDGET UTIL</div>
+                                <div id="planBudgetUtil" style="font-size: 2rem; font-weight: 700; color: var(--green);">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="btn btn-success" onclick="savePlan()">💾 Save Plan</button>
+                        <button class="btn btn-secondary" onclick="exportPlan()">📥 Export to Excel</button>
+                        <button class="btn btn-secondary" onclick="adjustPlan()">⚙️ Adjust Parameters</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Asset Replacement Schedule</h3>
+                    <table id="planTable">
+                        <thead>
+                            <tr>
+                                <th>Priority</th>
+                                <th>Asset ID</th>
+                                <th>Type</th>
+                                <th>Location</th>
+                                <th>Risk Score</th>
+                                <th>Est. Cost</th>
+                                <th>Year</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="planAssetsTable">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- My Plans Tab -->
+        <div id="plans-tab" class="tab-content">
+            <h1 class="page-title">My Capital Plans</h1>
+            <p class="page-subtitle">View, edit, and manage your saved capital replacement programs</p>
+            
+            <div id="savedPlans">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Reports Tab -->
+        <div id="reports-tab" class="tab-content">
+            <h1 class="page-title">Reports & Exports</h1>
+            <p class="page-subtitle">Generate regulatory filings and executive summaries</p>
+            
+            <div class="card">
+                <h3 class="card-title">Fleet Health Summary</h3>
+                <p style="color: var(--dim); margin-bottom: 1rem;">Weekly overview of fleet health, critical assets, and risk trends</p>
+                <button class="btn btn-primary" onclick="alert('Fleet Health Summary generated!')">Generate Report</button>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">PUC Regulatory Filing</h3>
+                <p style="color: var(--dim); margin-bottom: 1rem;">Pennsylvania PUC-compliant filing with asset justifications</p>
+                <button class="btn btn-primary" onclick="alert('PUC Filing Package generated!')">Generate Filing</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Asset Detail Modal -->
+    <div id="assetModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalAssetId">Asset Details</h2>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-section">
+                    <h3 style="margin-bottom: 1rem;">Asset Information</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
+                        <div>
+                            <div class="detail-label">Asset Type</div>
+                            <div class="detail-value" id="modalType"></div>
+                        </div>
+                        <div>
+                            <div class="detail-label">Manufacturer</div>
+                            <div class="detail-value" id="modalMfr"></div>
+                        </div>
+                        <div>
+                            <div class="detail-label">Location</div>
+                            <div class="detail-value" id="modalLocation"></div>
+                        </div>
+                        <div>
+                            <div class="detail-label">Commission Date</div>
+                            <div class="detail-value" id="modalCommission"></div>
+                        </div>
+                        <div>
+                            <div class="detail-label">Age</div>
+                            <div class="detail-value" id="modalAge"></div>
+                        </div>
+                        <div>
+                            <div class="detail-label">Voltage</div>
+                            <div class="detail-value" id="modalVoltage"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3 style="margin-bottom: 1rem;">Risk Assessment</h3>
+                    <div class="risk-assessment">
+                        <div class="risk-factor">
+                            <div class="risk-factor-value" id="modalHealth"></div>
+                            <div class="risk-factor-label">Health Score</div>
+                        </div>
+                        <div class="risk-factor">
+                            <div class="risk-factor-value" id="modalRiskScore"></div>
+                            <div class="risk-factor-label">Risk Score</div>
+                        </div>
+                        <div class="risk-factor">
+                            <div class="risk-factor-value" id="modalPriority"></div>
+                            <div class="risk-factor-label">Priority</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3 style="margin-bottom: 1rem;">Engineering Assessment</h3>
+                    <div class="assessment-grid">
+                        <div class="form-group">
+                            <label class="form-label">Condition Rating</label>
+                            <select class="form-select" id="conditionRating">
+                                <option value="excellent">Excellent</option>
+                                <option value="good">Good</option>
+                                <option value="fair">Fair</option>
+                                <option value="poor">Poor</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Recommended Action</label>
+                            <select class="form-select" id="recommendedAction">
+                                <option value="monitor">Continue Monitoring</option>
+                                <option value="inspect">Schedule Inspection</option>
+                                <option value="repair">Minor Repair</option>
+                                <option value="replace">Replacement Required</option>
+                                <option value="emergency">Emergency Action</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Engineering Notes</label>
+                        <textarea class="form-textarea" id="engineeringNotes" placeholder="Add detailed assessment notes, observed conditions, test results, or recommendations..."></textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="saveAssessment()">💾 Save Assessment</button>
+                </div>
+                
+                <div class="detail-section">
+                    <h3 style="margin-bottom: 1rem;">Assessment History</h3>
+                    <div class="notes-section" id="notesHistory">
+                        <div class="note-item">
+                            <div class="note-meta">2026-01-15 • Sarah Chen • Asset Manager</div>
+                            <div>DGA results show elevated H2 (450 ppm) and C2H4 (180 ppm). Thermal fault indicated. Recommend replacement in next capital cycle.</div>
+                        </div>
+                        <div class="note-item">
+                            <div class="note-meta">2025-11-20 • Mike Rodriguez • Field Inspector</div>
+                            <div>Visual inspection revealed oil leak at bushing gasket. Minor corrosion on tank exterior. Work order created for gasket replacement.</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button class="btn btn-success" onclick="addToWorkQueue()">➕ Add to Work Queue</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Sample asset data for PPL territory
+        const pplAssets = [
+            {id: 'XFMR-T345-001', type: 'Power Transformer', mfr: 'ABB', voltage: '345', capacity: '500 MVA', location: 'Allentown West Sub', commission: '1985-06-15', age: 41, health: 42, risk: 95.2, riskLevel: 'critical', cost: 1250, lastAssessment: '2026-01-15'},
+            {id: 'CB-D138-047', type: 'Circuit Breaker', mfr: 'Siemens', voltage: '138', capacity: '2000 A', location: 'Bethlehem Central', commission: '1992-03-22', age: 34, health: 38, risk: 92.8, riskLevel: 'critical', cost: 850, lastAssessment: '2026-01-10'},
+            {id: 'XFMR-T230-078', type: 'Power Transformer', mfr: 'GE', voltage: '230', capacity: '350 MVA', location: 'Scranton Main', commission: '1988-09-10', age: 38, health: 45, risk: 89.3, riskLevel: 'critical', cost: 950, lastAssessment: '2025-12-20'},
+            {id: 'CB-T138-223', type: 'Circuit Breaker', mfr: 'Westinghouse', voltage: '138', capacity: '1600 A', location: 'Wilkes-Barre North', commission: '1990-11-05', age: 36, health: 47, risk: 85.7, riskLevel: 'critical', cost: 780, lastAssessment: '2026-01-05'},
+            {id: 'XFMR-D069-023', type: 'Dist Transformer', mfr: 'Cooper', voltage: '12.47', capacity: '167 kVA', location: 'Easton Zone', commission: '2001-08-10', age: 25, health: 55, risk: 78.4, riskLevel: 'high', cost: 125, lastAssessment: '2025-11-30'},
+            {id: 'SW-T230-119', type: 'Disconnect Switch', mfr: 'ABB', voltage: '230', capacity: '2000 A', location: 'Hazleton Sub', commission: '1998-11-05', age: 28, health: 62, risk: 74.2, riskLevel: 'high', cost: 450, lastAssessment: '2025-12-15'},
+            {id: 'CAP-D025-156', type: 'Capacitor Bank', mfr: 'GE', voltage: '34.5', capacity: '10 MVAR', location: 'Lehighton Zone', commission: '2005-04-18', age: 21, health: 58, risk: 71.9, riskLevel: 'high', cost: 320, lastAssessment: '2025-10-25'},
+            {id: 'REG-D034-289', type: 'Voltage Regulator', mfr: 'Siemens', voltage: '12.47', capacity: '667 kVA', location: 'Jim Thorpe', commission: '2007-06-12', age: 19, health: 64, risk: 68.5, riskLevel: 'high', cost: 280, lastAssessment: '2025-12-01'},
+            {id: 'XFMR-D025-089', type: 'Dist Transformer', mfr: 'Howard', voltage: '12.47', capacity: '225 kVA', location: 'Stroudsburg', commission: '2010-07-12', age: 16, health: 72, risk: 55.3, riskLevel: 'medium', cost: 140, lastAssessment: '2026-01-12'},
+            {id: 'CB-D069-334', type: 'Circuit Breaker', mfr: 'ABB', voltage: '34.5', capacity: '1200 A', location: 'Pocono Summit', commission: '2012-09-25', age: 14, health: 68, risk: 52.1, riskLevel: 'medium', cost: 380, lastAssessment: '2025-11-18'}
+        ];
+
+        let filteredAssets = [...pplAssets];
+        let selectedAssets = new Set();
+        let workQueue = [];
+        let savedPlans = [];
+        let currentAsset = null;
+        
+        // Populate assets table
+        function populateAssetsTable() {
+            const tbody = document.getElementById('assetsTable');
+            const count = document.getElementById('assetCount');
+            count.textContent = filteredAssets.length;
+            
+            tbody.innerHTML = filteredAssets.map(a => `
+                <tr>
+                    <td><input type="checkbox" class="checkbox" data-id="${a.id}" onchange="toggleAssetSelection('${a.id}')"></td>
+                    <td><span class="asset-id">${a.id}</span></td>
+                    <td>${a.type}</td>
+                    <td>${a.location}</td>
+                    <td>${a.age} yrs</td>
+                    <td style="color: ${a.health < 50 ? 'var(--red)' : a.health < 70 ? 'var(--orange)' : 'var(--green)'}; font-weight: 700;">${a.health}</td>
+                    <td><span class="badge ${a.riskLevel}">${a.riskLevel.toUpperCase()}</span></td>
+                    <td>${a.lastAssessment}</td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.75rem;" onclick="openAssetDetail('${a.id}')">📋 Assess</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        // Toggle asset selection
+        function toggleAssetSelection(id) {
+            if (selectedAssets.has(id)) {
+                selectedAssets.delete(id);
+            } else {
+                selectedAssets.add(id);
+            }
+            updateSelectionUI();
+        }
+        
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('tbody .checkbox');
+            
+            if (selectAll.checked) {
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    selectedAssets.add(cb.dataset.id);
+                });
+            } else {
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                    selectedAssets.delete(cb.dataset.id);
+                });
+            }
+            updateSelectionUI();
+        }
+        
+        function updateSelectionUI() {
+            const count = document.getElementById('selectedCount');
+            const btn = document.getElementById('bulkAddBtn');
+            
+            if (selectedAssets.size > 0) {
+                count.textContent = `${selectedAssets.size} selected`;
+                count.style.display = 'block';
+                btn.style.display = 'block';
+            } else {
+                count.style.display = 'none';
+                btn.style.display = 'none';
+            }
+        }
+        
+        // Bulk add to work queue
+        function bulkAddToQueue() {
+            selectedAssets.forEach(id => {
+                const asset = pplAssets.find(a => a.id === id);
+                if (asset && !workQueue.find(q => q.id === id)) {
+                    workQueue.push({...asset, notes: ''});
+                }
+            });
+            
+            selectedAssets.clear();
+            updateSelectionUI();
+            alert(`Added ${selectedAssets.size} assets to work queue!`);
+            populateWorkQueue();
+        }
+        
+        // Open asset detail modal
+        function openAssetDetail(id) {
+            currentAsset = pplAssets.find(a => a.id === id);
+            if (!currentAsset) return;
+            
+            document.getElementById('modalAssetId').textContent = currentAsset.id;
+            document.getElementById('modalType').textContent = currentAsset.type;
+            document.getElementById('modalMfr').textContent = currentAsset.mfr;
+            document.getElementById('modalLocation').textContent = currentAsset.location;
+            document.getElementById('modalCommission').textContent = currentAsset.commission;
+            document.getElementById('modalAge').textContent = currentAsset.age + ' years';
+            document.getElementById('modalVoltage').textContent = currentAsset.voltage + ' kV';
+            document.getElementById('modalHealth').textContent = currentAsset.health;
+            document.getElementById('modalRiskScore').textContent = currentAsset.risk.toFixed(1);
+            document.getElementById('modalPriority').textContent = currentAsset.riskLevel.toUpperCase();
+            
+            document.getElementById('assetModal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('assetModal').classList.remove('active');
+        }
+        
+        // Save assessment
+        function saveAssessment() {
+            const condition = document.getElementById('conditionRating').value;
+            const action = document.getElementById('recommendedAction').value;
+            const notes = document.getElementById('engineeringNotes').value;
+            
+            if (!notes.trim()) {
+                alert('Please add engineering notes for this assessment.');
+                return;
+            }
+            
+            alert(`Assessment saved for ${currentAsset.id}!\n\nCondition: ${condition}\nAction: ${action}\nNotes: ${notes}`);
+            
+            // Clear form
+            document.getElementById('engineeringNotes').value = '';
+        }
+        
+        // Add to work queue
+        function addToWorkQueue() {
+            if (!workQueue.find(q => q.id === currentAsset.id)) {
+                workQueue.push({...currentAsset, notes: document.getElementById('engineeringNotes').value || ''});
+                alert(`${currentAsset.id} added to work queue!`);
+                populateWorkQueue();
+            } else {
+                alert('Asset already in work queue.');
+            }
+        }
+        
+        // Populate work queue
+        function populateWorkQueue() {
+            const tbody = document.getElementById('queueTable');
+            const count = document.getElementById('queueCount');
+            count.textContent = workQueue.length;
+            
+            if (workQueue.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--dim);">No assets in work queue. Add assets from the Assessment tab.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = workQueue.map((a, idx) => `
+                <tr>
+                    <td><span class="asset-id">${a.id}</span></td>
+                    <td>${a.type}</td>
+                    <td>${a.location}</td>
+                    <td>${a.health}</td>
+                    <td>${a.risk.toFixed(1)}</td>
+                    <td>$${a.cost}k</td>
+                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${a.notes || 'No notes'}</td>
+                    <td>
+                        <button class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.75rem;" onclick="removeFromQueue(${idx})">Remove</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function removeFromQueue(idx) {
+            workQueue.splice(idx, 1);
+            populateWorkQueue();
+        }
+        
+        function clearQueue() {
+            if (confirm('Are you sure you want to clear the entire work queue?')) {
+                workQueue = [];
+                populateWorkQueue();
+            }
+        }
+        
+        function exportQueue() {
+            const csv = [
+                ['Asset ID', 'Type', 'Location', 'Health', 'Risk Score', 'Est. Cost', 'Notes'].join(','),
+                ...workQueue.map(a => [a.id, a.type, a.location, a.health, a.risk, a.cost, a.notes].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Work_Queue_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+        
+        // Create plan from queue
+        function createPlanFromQueue() {
+            if (workQueue.length === 0) {
+                alert('Work queue is empty. Add assets first.');
+                return;
+            }
+            
+            switchTab('planner');
+            document.getElementById('planName').value = `Queue Plan ${new Date().toISOString().split('T')[0]}`;
+            const totalCost = workQueue.reduce((sum, a) => sum + a.cost, 0);
+            document.getElementById('planBudget').value = (totalCost / 1000).toFixed(1);
+        }
+        
+        // Generate plan
+        function generatePlan() {
+            const planName = document.getElementById('planName').value;
+            const planType = document.getElementById('planType').value;
+            const budget = parseFloat(document.getElementById('planBudget').value) || 0;
+            const threshold = parseInt(document.getElementById('riskThreshold').value);
+            
+            if (!planName) {
+                alert('Please enter a plan name.');
+                return;
+            }
+            
+            // Filter assets by risk threshold
+            let planAssets = workQueue.length > 0 ? [...workQueue] : pplAssets.filter(a => a.risk >= threshold);
+            planAssets.sort((a, b) => b.risk - a.risk);
+            
+            // Calculate totals
+            let runningCost = 0;
+            const selectedAssets = [];
+            
+            for (const asset of planAssets) {
+                if (runningCost + asset.cost <= budget * 1000) {
+                    selectedAssets.push(asset);
+                    runningCost += asset.cost;
+                }
+            }
+            
+            const totalCost = runningCost / 1000;
+            const avgRisk = selectedAssets.reduce((sum, a) => sum + a.risk, 0) / selectedAssets.length;
+            const utilization = ((totalCost / budget) * 100).toFixed(1);
+            
+            // Update UI
+            document.getElementById('planTotalAssets').textContent = selectedAssets.length;
+            document.getElementById('planTotalCost').textContent = `$${totalCost.toFixed(1)}M`;
+            document.getElementById('planAvgRisk').textContent = avgRisk.toFixed(1);
+            document.getElementById('planBudgetUtil').textContent = utilization + '%';
+            
+            // Populate table
+            const tbody = document.getElementById('planAssetsTable');
+            tbody.innerHTML = selectedAssets.map((a, idx) => `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td><span class="asset-id">${a.id}</span></td>
+                    <td>${a.type}</td>
+                    <td>${a.location}</td>
+                    <td>${a.risk.toFixed(1)}</td>
+                    <td>$${a.cost}k</td>
+                    <td>2026</td>
+                    <td><button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.75rem;">Edit</button></td>
+                </tr>
+            `).join('');
+            
+            document.getElementById('generatedPlan').style.display = 'block';
+            
+            // Store current plan
+            window.currentGeneratedPlan = {
+                name: planName,
+                type: planType,
+                budget: budget,
+                assets: selectedAssets,
+                created: new Date().toISOString()
+            };
+        }
+        
+        // Save plan
+        function savePlan() {
+            if (!window.currentGeneratedPlan) return;
+            
+            savedPlans.push(window.currentGeneratedPlan);
+            alert(`Plan "${window.currentGeneratedPlan.name}" saved successfully!`);
+            populateSavedPlans();
+        }
+        
+        function exportPlan() {
+            if (!window.currentGeneratedPlan) return;
+            
+            const plan = window.currentGeneratedPlan;
+            const csv = [
+                ['Asset Replacement Plan:', plan.name].join(','),
+                ['Budget:', `$${plan.budget}M`].join(','),
+                ['Created:', plan.created].join(','),
+                [],
+                ['Priority', 'Asset ID', 'Type', 'Location', 'Risk Score', 'Est. Cost', 'Year'].join(','),
+                ...plan.assets.map((a, idx) => [idx + 1, a.id, a.type, a.location, a.risk, `$${a.cost}k`, '2026'].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${plan.name.replace(/\s+/g, '_')}.csv`;
+            link.click();
+        }
+        
+        function adjustPlan() {
+            document.getElementById('generatedPlan').style.display = 'none';
+        }
+        
+        // Populate saved plans
+        function populateSavedPlans() {
+            const container = document.getElementById('savedPlans');
+            
+            if (savedPlans.length === 0) {
+                container.innerHTML = '<div class="card"><p style="text-align: center; color: var(--dim); padding: 2rem;">No saved plans yet. Create a plan from the Capital Planner tab.</p></div>';
+                return;
+            }
+            
+            container.innerHTML = savedPlans.map((plan, idx) => `
+                <div class="plan-item">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">${plan.name}</h3>
+                            <p style="color: var(--dim); font-size: 0.875rem;">Created: ${new Date(plan.created).toLocaleString()} • ${plan.type === '5year' ? '5-Year Plan' : 'Annual Plan'}</p>
+                        </div>
+                        <div style="display: flex; gap: 0.75rem;">
+                            <button class="btn btn-secondary" onclick="viewPlan(${idx})">👁️ View</button>
+                            <button class="btn btn-secondary" onclick="exportSavedPlan(${idx})">📥 Export</button>
+                            <button class="btn btn-danger" onclick="deletePlan(${idx})">🗑️ Delete</button>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--dim);">Assets</div>
+                            <div style="font-size: 1.25rem; font-weight: 700;">${plan.assets.length}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--dim);">Budget</div>
+                            <div style="font-size: 1.25rem; font-weight: 700;">$${plan.budget}M</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--dim);">Avg Risk</div>
+                            <div style="font-size: 1.25rem; font-weight: 700;">${(plan.assets.reduce((sum, a) => sum + a.risk, 0) / plan.assets.length).toFixed(1)}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function viewPlan(idx) {
+            alert(`Viewing plan: ${savedPlans[idx].name}`);
+        }
+        
+        function exportSavedPlan(idx) {
+            const plan = savedPlans[idx];
+            const csv = [
+                ['Asset Replacement Plan:', plan.name].join(','),
+                ['Budget:', `$${plan.budget}M`].join(','),
+                [],
+                ['Asset ID', 'Type', 'Location', 'Risk Score', 'Est. Cost'].join(','),
+                ...plan.assets.map(a => [a.id, a.type, a.location, a.risk, `$${a.cost}k`].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${plan.name.replace(/\s+/g, '_')}.csv`;
+            link.click();
+        }
+        
+        function deletePlan(idx) {
+            if (confirm(`Delete plan "${savedPlans[idx].name}"?`)) {
+                savedPlans.splice(idx, 1);
+                populateSavedPlans();
+            }
+        }
+        
+        // Filters
+        document.getElementById('searchInput')?.addEventListener('input', applyFilters);
+        document.getElementById('assetClassFilter')?.addEventListener('change', applyFilters);
+        document.getElementById('riskLevelFilter')?.addEventListener('change', applyFilters);
+        
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const assetClass = document.getElementById('assetClassFilter').value;
+            const riskLevel = document.getElementById('riskLevelFilter').value;
+            
+            filteredAssets = pplAssets.filter(a => {
+                const matchSearch = !search || a.id.toLowerCase().includes(search) || 
+                                   a.type.toLowerCase().includes(search) || 
+                                   a.location.toLowerCase().includes(search);
+                const matchClass = !assetClass || a.type === assetClass;
+                const matchRisk = !riskLevel || a.riskLevel === riskLevel;
+                
+                return matchSearch && matchClass && matchRisk;
+            });
+            
+            populateAssetsTable();
+        }
+        
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('assetClassFilter').value = '';
+            document.getElementById('riskLevelFilter').value = '';
+            filteredAssets = [...pplAssets];
+            populateAssetsTable();
+        }
+        
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // Initialize
+        populateAssetsTable();
+        populateWorkQueue();
+        populateSavedPlans();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Intelligence Platform - Grid Asset Health & Risk Management</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-bottom: 1px solid #334155;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-tab {
+            padding: 0.5rem 1.25rem;
+            background: transparent;
+            border: 1px solid #475569;
+            color: #94a3b8;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .nav-tab:hover {
+            background: #1e293b;
+            border-color: #64748b;
+            color: #e2e8f0;
+        }
+
+        .nav-tab.active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: #1e293b;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            height: calc(100vh - 73px);
+            gap: 0;
+        }
+
+        .sidebar {
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            padding: 1.5rem 1rem;
+            border-bottom: 1px solid #334155;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+
+        .metric-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value.critical { color: #ef4444; }
+        .metric-value.warning { color: #f59e0b; }
+        .metric-value.good { color: #10b981; }
+        .metric-value.info { color: #3b82f6; }
+
+        .metric-change {
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .metric-change.up { color: #ef4444; }
+        .metric-change.down { color: #10b981; }
+
+        .filter-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-label {
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: #334155;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .main-content {
+            background: #0f172a;
+            overflow-y: auto;
+        }
+
+        .content-header {
+            background: #1e293b;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1.25rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #334155;
+            color: #e2e8f0;
+            border: 1px solid #475569;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .dashboard-grid {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .icon-critical { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+        .icon-warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+        .icon-good { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .icon-info { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 1rem;
+        }
+
+        .asset-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .asset-item {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .asset-item:hover {
+            border-color: #3b82f6;
+            transform: translateX(4px);
+        }
+
+        .asset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.5rem;
+        }
+
+        .asset-id {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .health-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .health-critical {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+
+        .health-poor {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid #f59e0b;
+        }
+
+        .health-fair {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+            border: 1px solid #eab308;
+        }
+
+        .health-good {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid #10b981;
+        }
+
+        .asset-details {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .asset-detail {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            color: #64748b;
+            font-size: 0.7rem;
+        }
+
+        .detail-value {
+            color: #cbd5e1;
+            margin-top: 0.25rem;
+        }
+
+        .risk-score {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .risk-bar {
+            flex: 1;
+            height: 6px;
+            background: #334155;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .risk-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .risk-fill.critical { background: #ef4444; }
+        .risk-fill.high { background: #f59e0b; }
+        .risk-fill.medium { background: #eab308; }
+        .risk-fill.low { background: #10b981; }
+
+        .model-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .model-card {
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .model-card:hover {
+            border-color: #3b82f6;
+        }
+
+        .model-card.active {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+        }
+
+        .model-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .model-type {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .model-accuracy {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .accuracy-bar {
+            flex: 1;
+            height: 4px;
+            background: #334155;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .accuracy-fill {
+            height: 100%;
+            background: #10b981;
+            border-radius: 2px;
+        }
+
+        .map-container {
+            height: 500px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #334155;
+        }
+
+        #assetMap {
+            height: 100%;
+            width: 100%;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid #334155;
+        }
+
+        .timeline-date {
+            min-width: 100px;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-title {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .timeline-desc {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+        }
+
+        .close-btn:hover {
+            color: #e2e8f0;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .info-label {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">
+                ⚡ Asset Intelligence Platform
+            </div>
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="switchTab('dashboard')">Dashboard</button>
+                <button class="nav-tab" onclick="switchTab('models')">Health Models</button>
+                <button class="nav-tab" onclick="switchTab('replacement')">Replacement Planning</button>
+                <button class="nav-tab" onclick="switchTab('analytics')">Analytics</button>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="status-indicator">
+                <div class="pulse"></div>
+                <span>Models Running</span>
+            </div>
+            <div class="status-indicator">
+                <span>Last Updated: 2 mins ago</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="section-title">Fleet Overview</div>
+                <div class="metric-card">
+                    <div class="metric-label">Total Assets</div>
+                    <div class="metric-value info">47,329</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Critical Risk</div>
+                    <div class="metric-value critical">1,847</div>
+                    <div class="metric-change up">↑ 3.2% vs last month</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">High Risk</div>
+                    <div class="metric-value warning">4,562</div>
+                    <div class="metric-change up">↑ 1.8% vs last month</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Avg Health Score</div>
+                    <div class="metric-value good">72.4</div>
+                    <div class="metric-change down">↓ 0.5 vs last month</div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">Filters</div>
+                
+                <div class="filter-group">
+                    <div class="filter-label">Asset Class</div>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="applyFilters()">
+                            <span>Transformers</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="applyFilters()">
+                            <span>Circuit Breakers</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="applyFilters()">
+                            <span>Power Lines</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="applyFilters()">
+                            <span>Switches</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="applyFilters()">
+                            <span>Capacitors</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-label">Voltage Class</div>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="applyFilters()">
+                            <span>Transmission (>100kV)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="applyFilters()">
+                            <span>Sub-transmission (35-100kV)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="applyFilters()">
+                            <span>Distribution (<35kV)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-label">Risk Level</div>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="applyFilters()">
+                            <span>🔴 Critical (90-100)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="applyFilters()">
+                            <span>🟠 High (70-89)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" onchange="applyFilters()">
+                            <span>🟡 Medium (50-69)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" onchange="applyFilters()">
+                            <span>🟢 Low (<50)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content active">
+                <div class="content-header">
+                    <h1 class="page-title">Asset Health Dashboard</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary">📊 Export Report</button>
+                        <button class="btn btn-secondary">🔄 Refresh Data</button>
+                        <button class="btn btn-primary">➕ Run New Model</button>
+                    </div>
+                </div>
+
+                <div style="padding: 2rem;">
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #ef4444;">1,847</div>
+                            <div class="stat-label">Critical Assets</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #f59e0b;">$127M</div>
+                            <div class="stat-label">Replacement Cost (Critical)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #3b82f6;">324</div>
+                            <div class="stat-label">Planned Replacements (2026)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #10b981;">94.2%</div>
+                            <div class="stat-label">Model Accuracy</div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <!-- Fleet Health Distribution -->
+                        <div class="card" style="grid-column: span 2;">
+                            <div class="card-header">
+                                <h3 class="card-title">Fleet Health Distribution</h3>
+                                <div class="card-icon icon-info">📊</div>
+                            </div>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="healthChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Risk Trend -->
+                        <div class="card" style="grid-column: span 2;">
+                            <div class="card-header">
+                                <h3 class="card-title">Risk Score Trend (12 Months)</h3>
+                                <div class="card-icon icon-warning">📈</div>
+                            </div>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="riskTrendChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Critical Assets Map -->
+                        <div class="card" style="grid-column: span 4;">
+                            <div class="card-header">
+                                <h3 class="card-title">Geographic Risk Distribution</h3>
+                                <div class="card-icon icon-critical">🗺️</div>
+                            </div>
+                            <div class="map-container">
+                                <div id="assetMap"></div>
+                            </div>
+                        </div>
+
+                        <!-- Critical Assets List -->
+                        <div class="card" style="grid-column: span 2;">
+                            <div class="card-header">
+                                <h3 class="card-title">Critical Assets Requiring Immediate Attention</h3>
+                                <div class="card-icon icon-critical">⚠️</div>
+                            </div>
+                            <div class="asset-list">
+                                <div class="asset-item" onclick="showAssetDetails('XFMR-T345-001')">
+                                    <div class="asset-header">
+                                        <div class="asset-id">XFMR-T345-001</div>
+                                        <div class="health-badge health-critical">Critical</div>
+                                    </div>
+                                    <div class="asset-details">
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Type</span>
+                                            <span class="detail-value">Power Transformer</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Voltage</span>
+                                            <span class="detail-value">345kV</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Age</span>
+                                            <span class="detail-value">47 years</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Location</span>
+                                            <span class="detail-value">Sub-A14</span>
+                                        </div>
+                                    </div>
+                                    <div class="risk-score">
+                                        <span style="font-size: 0.75rem; color: #94a3b8;">Risk Score:</span>
+                                        <div class="risk-bar">
+                                            <div class="risk-fill critical" style="width: 94%;"></div>
+                                        </div>
+                                        <span style="font-size: 0.75rem; font-weight: 600; color: #ef4444;">94/100</span>
+                                    </div>
+                                </div>
+
+                                <div class="asset-item" onclick="showAssetDetails('CB-D138-047')">
+                                    <div class="asset-header">
+                                        <div class="asset-id">CB-D138-047</div>
+                                        <div class="health-badge health-critical">Critical</div>
+                                    </div>
+                                    <div class="asset-details">
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Type</span>
+                                            <span class="detail-value">Circuit Breaker</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Voltage</span>
+                                            <span class="detail-value">138kV</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Age</span>
+                                            <span class="detail-value">52 years</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Location</span>
+                                            <span class="detail-value">Sub-C08</span>
+                                        </div>
+                                    </div>
+                                    <div class="risk-score">
+                                        <span style="font-size: 0.75rem; color: #94a3b8;">Risk Score:</span>
+                                        <div class="risk-bar">
+                                            <div class="risk-fill critical" style="width: 91%;"></div>
+                                        </div>
+                                        <span style="font-size: 0.75rem; font-weight: 600; color: #ef4444;">91/100</span>
+                                    </div>
+                                </div>
+
+                                <div class="asset-item" onclick="showAssetDetails('XFMR-D069-023')">
+                                    <div class="asset-header">
+                                        <div class="asset-id">XFMR-D069-023</div>
+                                        <div class="health-badge health-poor">High Risk</div>
+                                    </div>
+                                    <div class="asset-details">
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Type</span>
+                                            <span class="detail-value">Distribution Transformer</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Voltage</span>
+                                            <span class="detail-value">12.47kV</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Age</span>
+                                            <span class="detail-value">39 years</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Location</span>
+                                            <span class="detail-value">Pole-7834</span>
+                                        </div>
+                                    </div>
+                                    <div class="risk-score">
+                                        <span style="font-size: 0.75rem; color: #94a3b8;">Risk Score:</span>
+                                        <div class="risk-bar">
+                                            <div class="risk-fill high" style="width: 87%;"></div>
+                                        </div>
+                                        <span style="font-size: 0.75rem; font-weight: 600; color: #f59e0b;">87/100</span>
+                                    </div>
+                                </div>
+
+                                <div class="asset-item" onclick="showAssetDetails('SW-T230-119')">
+                                    <div class="asset-header">
+                                        <div class="asset-id">SW-T230-119</div>
+                                        <div class="health-badge health-poor">High Risk</div>
+                                    </div>
+                                    <div class="asset-details">
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Type</span>
+                                            <span class="detail-value">Disconnect Switch</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Voltage</span>
+                                            <span class="detail-value">230kV</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Age</span>
+                                            <span class="detail-value">41 years</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Location</span>
+                                            <span class="detail-value">Sub-B21</span>
+                                        </div>
+                                    </div>
+                                    <div class="risk-score">
+                                        <span style="font-size: 0.75rem; color: #94a3b8;">Risk Score:</span>
+                                        <div class="risk-bar">
+                                            <div class="risk-fill high" style="width: 83%;"></div>
+                                        </div>
+                                        <span style="font-size: 0.75rem; font-weight: 600; color: #f59e0b;">83/100</span>
+                                    </div>
+                                </div>
+
+                                <div class="asset-item" onclick="showAssetDetails('CAP-D025-156')">
+                                    <div class="asset-header">
+                                        <div class="asset-id">CAP-D025-156</div>
+                                        <div class="health-badge health-poor">High Risk</div>
+                                    </div>
+                                    <div class="asset-details">
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Type</span>
+                                            <span class="detail-value">Capacitor Bank</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Voltage</span>
+                                            <span class="detail-value">25kV</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Age</span>
+                                            <span class="detail-value">36 years</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Location</span>
+                                            <span class="detail-value">Sub-D15</span>
+                                        </div>
+                                    </div>
+                                    <div class="risk-score">
+                                        <span style="font-size: 0.75rem; color: #94a3b8;">Risk Score:</span>
+                                        <div class="risk-bar">
+                                            <div class="risk-fill high" style="width: 79%;"></div>
+                                        </div>
+                                        <span style="font-size: 0.75rem; font-weight: 600; color: #f59e0b;">79/100</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Asset Class Breakdown -->
+                        <div class="card" style="grid-column: span 2;">
+                            <div class="card-header">
+                                <h3 class="card-title">Risk by Asset Class</h3>
+                                <div class="card-icon icon-info">🏗️</div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="assetClassChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Models Tab -->
+            <div id="models-tab" class="tab-content">
+                <div class="content-header">
+                    <h1 class="page-title">Health Models & Algorithms</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary">➕ Add New Model</button>
+                    </div>
+                </div>
+
+                <div style="padding: 2rem;">
+                    <div class="model-selector">
+                        <div class="model-card active">
+                            <div class="model-name">🧠 Transformer Health Index</div>
+                            <div class="model-type">ML Model: Random Forest</div>
+                            <div class="model-accuracy">
+                                <span>Accuracy:</span>
+                                <div class="accuracy-bar">
+                                    <div class="accuracy-fill" style="width: 94%;"></div>
+                                </div>
+                                <span>94%</span>
+                            </div>
+                            <div style="margin-top: 0.75rem; font-size: 0.75rem; color: #64748b;">
+                                Last Run: 2 hours ago<br>
+                                Assets Scored: 8,429
+                            </div>
+                        </div>
+
+                        <div class="model-card">
+                            <div class="model-name">⚡ Circuit Breaker Failure Prediction</div>
+                            <div class="model-type">ML Model: Gradient Boosting</div>
+                            <div class="model-accuracy">
+                                <span>Accuracy:</span>
+                                <div class="accuracy-bar">
+                                    <div class="accuracy-fill" style="width: 91%;"></div>
+                                </div>
+                                <span>91%</span>
+                            </div>
+                            <div style="margin-top: 0.75rem; font-size: 0.75rem; color: #64748b;">
+                                Last Run: 5 hours ago<br>
+                                Assets Scored: 12,847
+                            </div>
+                        </div>
+
+                        <div class="model-card">
+                            <div class="model-name">📏 Age-Based Deterioration</div>
+                            <div class="model-type">Statistical Model: Weibull</div>
+                            <div class="model-accuracy">
+                                <span>Accuracy:</span>
+                                <div class="accuracy-bar">
+                                    <div class="accuracy-fill" style="width: 87%;"></div>
+                                </div>
+                                <span>87%</span>
+                            </div>
+                            <div style="margin-top: 0.75rem; font-size: 0.75rem; color: #64748b;">
+                                Last Run: 1 day ago<br>
+                                Assets Scored: 47,329
+                            </div>
+                        </div>
+
+                        <div class="model-card">
+                            <div class="model-name">🌡️ Thermal Overload Risk</div>
+                            <div class="model-type">Physics-Based Model</div>
+                            <div class="model-accuracy">
+                                <span>Accuracy:</span>
+                                <div class="accuracy-bar">
+                                    <div class="accuracy-fill" style="width: 89%;"></div>
+                                </div>
+                                <span>89%</span>
+                            </div>
+                            <div style="margin-top: 0.75rem; font-size: 0.75rem; color: #64748b;">
+                                Last Run: 3 hours ago<br>
+                                Assets Scored: 8,429
+                            </div>
+                        </div>
+
+                        <div class="model-card">
+                            <div class="model-name">🔧 Maintenance Impact Score</div>
+                            <div class="model-type">Rule-Based Model</div>
+                            <div class="model-accuracy">
+                                <span>Accuracy:</span>
+                                <div class="accuracy-bar">
+                                    <div class="accuracy-fill" style="width: 92%;"></div>
+                                </div>
+                                <span>92%</span>
+                            </div>
+                            <div style="margin-top: 0.75rem; font-size: 0.75rem; color: #64748b;">
+                                Last Run: 4 hours ago<br>
+                                Assets Scored: 47,329
+                            </div>
+                        </div>
+
+                        <div class="model-card">
+                            <div class="model-name">🌩️ Lightning Strike Vulnerability</div>
+                            <div class="model-type">ML Model: Neural Network</div>
+                            <div class="model-accuracy">
+                                <span>Accuracy:</span>
+                                <div class="accuracy-bar">
+                                    <div class="accuracy-fill" style="width: 88%;"></div>
+                                </div>
+                                <span>88%</span>
+                            </div>
+                            <div style="margin-top: 0.75rem; font-size: 0.75rem; color: #64748b;">
+                                Last Run: 6 hours ago<br>
+                                Assets Scored: 23,847
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Model Performance Comparison</h3>
+                        </div>
+                        <div class="chart-container" style="height: 400px;">
+                            <canvas id="modelComparisonChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Replacement Planning Tab -->
+            <div id="replacement-tab" class="tab-content">
+                <div class="content-header">
+                    <h1 class="page-title">Replacement Planning & Prioritization</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary">📋 Export Plan</button>
+                        <button class="btn btn-primary">🎯 Optimize Portfolio</button>
+                    </div>
+                </div>
+
+                <div style="padding: 2rem;">
+                    <div class="stats-grid" style="grid-template-columns: repeat(5, 1fr);">
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #3b82f6;">324</div>
+                            <div class="stat-label">Planned 2026</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #f59e0b;">$47.2M</div>
+                            <div class="stat-label">2026 Budget</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #10b981;">89%</div>
+                            <div class="stat-label">Budget Allocated</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #ef4444;">1,523</div>
+                            <div class="stat-label">In Backlog</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #8b5cf6;">Q2 2026</div>
+                            <div class="stat-label">Peak Activity</div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card" style="grid-column: span 3;">
+                            <div class="card-header">
+                                <h3 class="card-title">5-Year Replacement Forecast</h3>
+                            </div>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="replacementForecastChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card" style="grid-column: span 1;">
+                            <div class="card-header">
+                                <h3 class="card-title">Budget Allocation</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="budgetChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card" style="grid-column: span 4;">
+                            <div class="card-header">
+                                <h3 class="card-title">Prioritized Replacement Queue</h3>
+                            </div>
+                            <div class="asset-list">
+                                <div class="asset-item">
+                                    <div class="asset-header">
+                                        <div class="asset-id">XFMR-T345-001 • Priority Rank: #1</div>
+                                        <div class="health-badge health-critical">Q1 2026</div>
+                                    </div>
+                                    <div class="asset-details" style="grid-template-columns: repeat(4, 1fr);">
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Risk Score</span>
+                                            <span class="detail-value" style="color: #ef4444;">94/100</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Consequence of Failure</span>
+                                            <span class="detail-value" style="color: #ef4444;">High</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Est. Cost</span>
+                                            <span class="detail-value">$2.4M</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Lead Time</span>
+                                            <span class="detail-value">18 months</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="asset-item">
+                                    <div class="asset-header">
+                                        <div class="asset-id">CB-D138-047 • Priority Rank: #2</div>
+                                        <div class="health-badge health-critical">Q1 2026</div>
+                                    </div>
+                                    <div class="asset-details" style="grid-template-columns: repeat(4, 1fr);">
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Risk Score</span>
+                                            <span class="detail-value" style="color: #ef4444;">91/100</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Consequence of Failure</span>
+                                            <span class="detail-value" style="color: #ef4444;">High</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Est. Cost</span>
+                                            <span class="detail-value">$380K</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Lead Time</span>
+                                            <span class="detail-value">12 months</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="asset-item">
+                                    <div class="asset-header">
+                                        <div class="asset-id">XFMR-D069-023 • Priority Rank: #3</div>
+                                        <div class="health-badge health-poor">Q2 2026</div>
+                                    </div>
+                                    <div class="asset-details" style="grid-template-columns: repeat(4, 1fr);">
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Risk Score</span>
+                                            <span class="detail-value" style="color: #f59e0b;">87/100</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Consequence of Failure</span>
+                                            <span class="detail-value" style="color: #f59e0b;">Medium</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Est. Cost</span>
+                                            <span class="detail-value">$45K</span>
+                                        </div>
+                                        <div class="asset-detail">
+                                            <span class="detail-label">Lead Time</span>
+                                            <span class="detail-value">6 months</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics-tab" class="tab-content">
+                <div class="content-header">
+                    <h1 class="page-title">Advanced Analytics</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary">📊 Custom Report</button>
+                    </div>
+                </div>
+
+                <div style="padding: 2rem;">
+                    <div class="dashboard-grid">
+                        <div class="card" style="grid-column: span 2;">
+                            <div class="card-header">
+                                <h3 class="card-title">Age Distribution vs Risk</h3>
+                            </div>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="ageRiskChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card" style="grid-column: span 2;">
+                            <div class="card-header">
+                                <h3 class="card-title">Failure Rate Prediction</h3>
+                            </div>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="failureRateChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Detail Modal -->
+    <div id="assetModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Asset Detail: XFMR-T345-001</h2>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Asset ID</div>
+                    <div class="info-value">XFMR-T345-001</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Asset Type</div>
+                    <div class="info-value">Power Transformer</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Manufacturer</div>
+                    <div class="info-value">General Electric</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Installation Date</div>
+                    <div class="info-value">March 15, 1979</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Voltage Rating</div>
+                    <div class="info-value">345kV / 138kV</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">MVA Rating</div>
+                    <div class="info-value">500 MVA</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Location</div>
+                    <div class="info-value">Substation A-14, Bay 2</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Customers Affected</div>
+                    <div class="info-value">47,000</div>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid #334155; margin: 2rem 0;"></div>
+
+            <div style="margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1rem;">Health Scores</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Overall Risk Score</div>
+                        <div class="info-value" style="color: #ef4444; font-size: 1.5rem;">94/100</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Health Index</div>
+                        <div class="info-value" style="color: #ef4444;">Critical</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Probability of Failure</div>
+                        <div class="info-value" style="color: #f59e0b;">37%</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Consequence of Failure</div>
+                        <div class="info-value" style="color: #ef4444;">High ($4.8M)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1rem;">Contributing Factors</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Age (47 years)</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 200px; height: 8px; background: #334155; border-radius: 4px; overflow: hidden;">
+                                <div style="width: 94%; height: 100%; background: #ef4444; border-radius: 4px;"></div>
+                            </div>
+                            <span style="color: #ef4444; font-weight: 600;">94</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>DGA Analysis Results</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 200px; height: 8px; background: #334155; border-radius: 4px; overflow: hidden;">
+                                <div style="width: 89%; height: 100%; background: #f59e0b; border-radius: 4px;"></div>
+                            </div>
+                            <span style="color: #f59e0b; font-weight: 600;">89</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Load Factor</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 200px; height: 8px; background: #334155; border-radius: 4px; overflow: hidden;">
+                                <div style="width: 76%; height: 100%; background: #eab308; border-radius: 4px;"></div>
+                            </div>
+                            <span style="color: #eab308; font-weight: 600;">76</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Maintenance History</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 200px; height: 8px; background: #334155; border-radius: 4px; overflow: hidden;">
+                                <div style="width: 82%; height: 100%; background: #f59e0b; border-radius: 4px;"></div>
+                            </div>
+                            <span style="color: #f59e0b; font-weight: 600;">82</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3 style="margin-bottom: 1rem;">Recent Activity</h3>
+                <div class="timeline-item">
+                    <div class="timeline-date">Jan 15, 2026</div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">DGA Test Completed</div>
+                        <div class="timeline-desc">H2: 847 ppm (Critical), C2H2: 12 ppm (Warning)</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-date">Dec 3, 2025</div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Thermal Imaging</div>
+                        <div class="timeline-desc">Hot spot detected on bushing A3 - 15°C above ambient</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-date">Oct 22, 2025</div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Load Monitoring Alert</div>
+                        <div class="timeline-desc">Operating at 94% capacity during peak hours</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button class="btn btn-primary" style="flex: 1;">Schedule Replacement</button>
+                <button class="btn btn-secondary" style="flex: 1;">Add to Watchlist</button>
+                <button class="btn btn-secondary">View Full History</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Charts
+        const chartColors = {
+            critical: '#ef4444',
+            high: '#f59e0b',
+            medium: '#eab308',
+            low: '#10b981',
+            blue: '#3b82f6',
+            purple: '#8b5cf6'
+        };
+
+        // Health Distribution Chart
+        const healthCtx = document.getElementById('healthChart').getContext('2d');
+        new Chart(healthCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Critical', 'High Risk', 'Medium Risk', 'Low Risk', 'Healthy'],
+                datasets: [{
+                    label: 'Number of Assets',
+                    data: [1847, 4562, 8234, 12486, 20200],
+                    backgroundColor: [
+                        chartColors.critical,
+                        chartColors.high,
+                        chartColors.medium,
+                        chartColors.low,
+                        chartColors.blue
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        // Risk Trend Chart
+        const riskTrendCtx = document.getElementById('riskTrendChart').getContext('2d');
+        new Chart(riskTrendCtx, {
+            type: 'line',
+            data: {
+                labels: ['Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'],
+                datasets: [
+                    {
+                        label: 'Critical',
+                        data: [1623, 1654, 1689, 1712, 1738, 1761, 1779, 1798, 1815, 1829, 1841, 1847],
+                        borderColor: chartColors.critical,
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'High Risk',
+                        data: [4234, 4289, 4331, 4367, 4402, 4438, 4471, 4498, 4521, 4539, 4553, 4562],
+                        borderColor: chartColors.high,
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        labels: { color: '#94a3b8' }
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        // Asset Class Chart
+        const assetClassCtx = document.getElementById('assetClassChart').getContext('2d');
+        new Chart(assetClassCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Transformers', 'Circuit Breakers', 'Switches', 'Capacitors', 'Lines'],
+                datasets: [{
+                    data: [547, 423, 312, 289, 276],
+                    backgroundColor: [
+                        chartColors.critical,
+                        chartColors.high,
+                        chartColors.medium,
+                        chartColors.low,
+                        chartColors.blue
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        position: 'bottom',
+                        labels: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        // Replacement Forecast Chart
+        const replacementCtx = document.getElementById('replacementForecastChart');
+        if (replacementCtx) {
+            new Chart(replacementCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['2026', '2027', '2028', '2029', '2030'],
+                    datasets: [
+                        {
+                            label: 'Critical Priority',
+                            data: [324, 412, 389, 367, 341],
+                            backgroundColor: chartColors.critical
+                        },
+                        {
+                            label: 'High Priority',
+                            data: [189, 234, 267, 298, 312],
+                            backgroundColor: chartColors.high
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            stacked: true,
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: { 
+                            stacked: true,
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            labels: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Budget Chart
+        const budgetCtx = document.getElementById('budgetChart');
+        if (budgetCtx) {
+            new Chart(budgetCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Allocated', 'Available'],
+                    datasets: [{
+                        data: [42.1, 5.1],
+                        backgroundColor: [chartColors.blue, '#334155']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Model Comparison Chart
+        const modelCompCtx = document.getElementById('modelComparisonChart');
+        if (modelCompCtx) {
+            new Chart(modelCompCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'ROC-AUC'],
+                    datasets: [
+                        {
+                            label: 'Transformer Health',
+                            data: [94, 92, 91, 93, 95],
+                            borderColor: chartColors.blue,
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)'
+                        },
+                        {
+                            label: 'CB Failure Prediction',
+                            data: [91, 89, 88, 90, 92],
+                            borderColor: chartColors.purple,
+                            backgroundColor: 'rgba(139, 92, 246, 0.2)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { 
+                                color: '#94a3b8',
+                                backdropColor: 'transparent'
+                            },
+                            grid: { color: '#334155' },
+                            pointLabels: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            labels: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Age vs Risk Chart
+        const ageRiskCtx = document.getElementById('ageRiskChart');
+        if (ageRiskCtx) {
+            new Chart(ageRiskCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Assets',
+                        data: Array.from({length: 100}, () => ({
+                            x: Math.random() * 60,
+                            y: Math.random() * 100
+                        })),
+                        backgroundColor: chartColors.blue
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            title: { display: true, text: 'Risk Score', color: '#94a3b8' },
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: { 
+                            title: { display: true, text: 'Age (years)', color: '#94a3b8' },
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // Failure Rate Chart
+        const failureCtx = document.getElementById('failureRateChart');
+        if (failureCtx) {
+            new Chart(failureCtx, {
+                type: 'line',
+                data: {
+                    labels: ['2020', '2021', '2022', '2023', '2024', '2025', '2026 (Pred)', '2027 (Pred)', '2028 (Pred)'],
+                    datasets: [{
+                        label: 'Failure Rate (%)',
+                        data: [2.1, 2.3, 2.6, 2.9, 3.2, 3.5, 3.9, 4.3, 4.7],
+                        borderColor: chartColors.critical,
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            labels: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize Map
+        const map = L.map('assetMap').setView([40.7128, -74.0060], 10);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors © CARTO'
+        }).addTo(map);
+
+        // Add asset markers
+        const assetLocations = [
+            {coords: [40.7580, -73.9855], risk: 'critical', name: 'XFMR-T345-001'},
+            {coords: [40.7489, -73.9680], risk: 'critical', name: 'CB-D138-047'},
+            {coords: [40.7614, -73.9776], risk: 'high', name: 'XFMR-D069-023'},
+            {coords: [40.7282, -74.0776], risk: 'high', name: 'SW-T230-119'},
+            {coords: [40.7359, -73.9911], risk: 'high', name: 'CAP-D025-156'},
+            {coords: [40.7529, -73.9772], risk: 'medium', name: 'XFMR-D025-089'},
+            {coords: [40.7414, -74.0055], risk: 'medium', name: 'CB-T138-223'},
+            {coords: [40.7689, -73.9597], risk: 'low', name: 'SW-D069-445'}
+        ];
+
+        const riskColors = {
+            critical: '#ef4444',
+            high: '#f59e0b',
+            medium: '#eab308',
+            low: '#10b981'
+        };
+
+        assetLocations.forEach(asset => {
+            L.circleMarker(asset.coords, {
+                radius: 8,
+                fillColor: riskColors[asset.risk],
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map)
+            .bindPopup(`<b>${asset.name}</b><br>Risk: ${asset.risk}`);
+        });
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Filter application
+        function applyFilters() {
+            console.log('Filters applied');
+        }
+
+        // Modal functions
+        function showAssetDetails(assetId) {
+            document.getElementById('assetModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('assetModal').classList.remove('active');
+        }
+
+        // Close modal on outside click
+        document.getElementById('assetModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
