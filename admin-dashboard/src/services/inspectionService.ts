@@ -1,9 +1,10 @@
-import { supabase } from '../lib/supabase';
+import { supabase, sessionReady } from '../lib/supabase';
 import { mapDbInspectionToInspection } from '../lib/mappers';
 import type { DbInspection } from '../lib/mappers';
 import type { InspectionResult } from '../types';
 
 export async function getInspections(): Promise<InspectionResult[]> {
+  await sessionReady;
   const { data, error } = await supabase
     .from('inspections')
     .select('*')

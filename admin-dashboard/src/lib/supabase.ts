@@ -12,3 +12,10 @@ if (!supabaseConfigured) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+/**
+ * Promise that resolves once the Supabase client has finished restoring
+ * the auth session from localStorage. All service queries should await
+ * this before making requests so RLS policies see the authenticated role.
+ */
+export const sessionReady: Promise<void> = supabase.auth.getSession().then(() => {});

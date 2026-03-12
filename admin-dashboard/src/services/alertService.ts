@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, sessionReady } from '../lib/supabase';
 import type { ActivityAlert } from '../types';
 
 interface DbAlert {
@@ -23,6 +23,7 @@ function mapDbAlert(row: DbAlert): ActivityAlert {
 }
 
 export async function getAlerts(limit = 20): Promise<ActivityAlert[]> {
+  await sessionReady;
   const { data, error } = await supabase
     .from('activity_alerts')
     .select('*')

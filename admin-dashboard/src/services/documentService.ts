@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, sessionReady } from '../lib/supabase';
 
 export interface DocumentRecord {
   id: string;
@@ -48,6 +48,7 @@ function mapDbDoc(row: DbDocument): DocumentRecord {
  * Fetch all documents from DB.
  */
 export async function getDocuments(): Promise<DocumentRecord[]> {
+  await sessionReady;
   const { data, error } = await supabase
     .from('documents')
     .select('*')

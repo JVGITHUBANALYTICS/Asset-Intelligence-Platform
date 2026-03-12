@@ -1,9 +1,10 @@
-import { supabase } from '../lib/supabase';
+import { supabase, sessionReady } from '../lib/supabase';
 import { mapDbDGATestToDGATest } from '../lib/mappers';
 import type { DbDGATest } from '../lib/mappers';
 import type { DGATestResult } from '../types';
 
 export async function getDGATests(): Promise<DGATestResult[]> {
+  await sessionReady;
   const { data, error } = await supabase
     .from('dga_tests')
     .select('*')

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, sessionReady } from '../lib/supabase';
 import { mapDbAssetToAsset } from '../lib/mappers';
 import type { DbAsset } from '../lib/mappers';
 import type { Asset } from '../types';
@@ -12,6 +12,7 @@ export async function getAssets(filters?: {
   riskLevel?: string;
   search?: string;
 }): Promise<Asset[]> {
+  await sessionReady;
   let query = supabase.from('assets').select('*');
 
   if (filters?.type && filters.type !== 'all') {
@@ -52,6 +53,7 @@ export async function getAssets(filters?: {
  * Fetch a single asset by ID.
  */
 export async function getAssetById(id: string): Promise<Asset | null> {
+  await sessionReady;
   const { data, error } = await supabase
     .from('assets')
     .select('*')
