@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Trash2, Download, FileText, XCircle } from 'lucide-react';
 import { getAssets } from '../services/assetService';
+import { getQueuedAssetIds, removeFromQueue as removeFromStore, clearQueue as clearStore } from '../lib/workQueueStore';
 import { RISK_COLORS } from '../utils/constants';
 import Card, { CardHeader } from '../components/UI/Card';
 import Table from '../components/UI/Table';
@@ -15,23 +16,30 @@ interface QueueItem {
 
 export default function WorkQueue() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
-
-  useEffect(() => {
-    getAssets().then((assets) => {
-      const top3 = [...assets]
-        .sort((a, b) => b.riskScore - a.riskScore)
-        .slice(0, 3)
-        .map((asset) => ({ asset, addedAt: new Date().toISOString() }));
-      setQueue(top3);
-    });
-  }, []);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const ids = getQueuedAssetIds();
+    if (ids.length === 0) {
+      setQueue([]);
+      return;
+    }
+    getAssets().then((assets) => {
+      const idSet = new Set(ids);
+      const items = assets
+        .filter((a) => idSet.has(a.id))
+        .map((asset) => ({ asset, addedAt: new Date().toISOString() }));
+      setQueue(items);
+    });
+  }, []);
+
   const removeItem = (assetId: string) => {
+    removeFromStore(assetId);
     setQueue((prev) => prev.filter((item) => item.asset.id !== assetId));
   };
 
   const clearQueue = () => {
+    clearStore();
     setQueue([]);
   };
 

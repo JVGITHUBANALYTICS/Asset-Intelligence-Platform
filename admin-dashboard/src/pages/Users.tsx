@@ -1,6 +1,8 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Search, Filter, Database, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, X, FileText, MapPin, Calendar, Cpu, Shield, Zap, Download, ArrowUpDown, AlertTriangle, Activity, DollarSign } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { getAssets } from '../services/assetService';
+import { addToQueue } from '../lib/workQueueStore';
 import { formatDate, formatCurrency } from '../utils/helpers';
 import { RISK_COLORS, ASSET_CLASS_COLORS, VOLTAGE_CLASS_COLORS, HEALTH_THRESHOLDS } from '../utils/constants';
 import Card, { CardHeader } from '../components/UI/Card';
@@ -37,6 +39,7 @@ type SortKey = 'id' | 'type' | 'location' | 'age' | 'healthScore' | 'riskLevel' 
 type SortDir = 'asc' | 'desc';
 
 export default function Assets() {
+  const navigate = useNavigate();
   const [allAssets, setAllAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -355,7 +358,7 @@ export default function Assets() {
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <Button size="sm" onClick={() => setSelectedIds(new Set())}>
+            <Button size="sm" onClick={() => { addToQueue([...selectedIds]); setSelectedIds(new Set()); navigate('/work-queue'); }}>
               <ClipboardList size={16} />
               Add {selectedIds.size} to Work Queue
             </Button>
