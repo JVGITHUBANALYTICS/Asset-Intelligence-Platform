@@ -76,7 +76,7 @@ export default function DGATestResults() {
       const matchesTrend = trendFilter === 'all' || r.trend === trendFilter;
       return matchesSearch && matchesType && matchesDiagnosis && matchesFault && matchesTrend;
     });
-  }, [search, typeFilter, diagnosisFilter, faultFilter, trendFilter]);
+  }, [allRecords, search, typeFilter, diagnosisFilter, faultFilter, trendFilter]);
 
   const sortedRecords = useMemo(() => {
     if (!sortKey) return filteredRecords;
@@ -174,14 +174,14 @@ export default function DGATestResults() {
 
   // ─── KPI Summary ──────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const total = allRecords.length;
+    const total = filteredRecords.length;
     if (total === 0) return { total: 0, critical: 0, warning: 0, deteriorating: 0, avgTDCG: 0 };
-    const critical = allRecords.filter((r) => r.diagnosis === 'Critical').length;
-    const warning = allRecords.filter((r) => r.diagnosis === 'Warning').length;
-    const deteriorating = allRecords.filter((r) => r.trend === 'Deteriorating').length;
-    const avgTDCG = Math.round(allRecords.reduce((sum, r) => sum + r.tdcg, 0) / total);
+    const critical = filteredRecords.filter((r) => r.diagnosis === 'Critical').length;
+    const warning = filteredRecords.filter((r) => r.diagnosis === 'Warning').length;
+    const deteriorating = filteredRecords.filter((r) => r.trend === 'Deteriorating').length;
+    const avgTDCG = Math.round(filteredRecords.reduce((sum, r) => sum + r.tdcg, 0) / total);
     return { total, critical, warning, deteriorating, avgTDCG };
-  }, [allRecords]);
+  }, [filteredRecords]);
 
   // ─── Gas level color helper ───────────────────────────────────
   const gasColor = (value: number, thresholds: [number, number, number]) => {

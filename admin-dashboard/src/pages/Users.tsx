@@ -220,15 +220,15 @@ export default function Assets() {
 
   // ─── KPI Summary ──────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const total = allAssets.length;
+    const total = filteredAssets.length;
     if (total === 0) return { total: 0, critical: 0, highRisk: 0, avgHealth: 0, avgAge: 0, totalReplacementCost: 0 };
-    const critical = allAssets.filter((a) => a.riskLevel === 'critical').length;
-    const highRisk = allAssets.filter((a) => a.riskLevel === 'high').length;
-    const avgHealth = Math.round(allAssets.reduce((sum, a) => sum + a.healthScore, 0) / total);
-    const avgAge = Math.round(allAssets.reduce((sum, a) => sum + a.age, 0) / total * 10) / 10;
-    const totalReplacementCost = allAssets.reduce((sum, a) => sum + a.estimatedCost, 0);
+    const critical = filteredAssets.filter((a) => a.riskLevel === 'critical').length;
+    const highRisk = filteredAssets.filter((a) => a.riskLevel === 'high').length;
+    const avgHealth = Math.round(filteredAssets.reduce((sum, a) => sum + a.healthScore, 0) / total);
+    const avgAge = Math.round(filteredAssets.reduce((sum, a) => sum + a.age, 0) / total * 10) / 10;
+    const totalReplacementCost = filteredAssets.reduce((sum, a) => sum + a.estimatedCost, 0);
     return { total, critical, highRisk, avgHealth, avgAge, totalReplacementCost };
-  }, [allAssets]);
+  }, [filteredAssets]);
 
   const SortHeader = ({ label, colKey, className }: { label: string; colKey: SortKey; className?: string }) => (
     <button

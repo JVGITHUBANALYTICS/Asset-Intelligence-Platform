@@ -79,7 +79,7 @@ export default function InspectionResults() {
       const matchesPriority = priorityFilter === 'all' || r.priority === priorityFilter;
       return matchesSearch && matchesType && matchesCondition && matchesInspType && matchesPriority;
     });
-  }, [search, typeFilter, conditionFilter, inspTypeFilter, priorityFilter]);
+  }, [allRecords, search, typeFilter, conditionFilter, inspTypeFilter, priorityFilter]);
 
   const sortedRecords = useMemo(() => {
     if (!sortKey) return filteredRecords;
@@ -173,13 +173,13 @@ export default function InspectionResults() {
 
   // ─── KPI Summary ──────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const total = allRecords.length;
+    const total = filteredRecords.length;
     if (total === 0) return { total: 0, critical: 0, poor: 0, overdue: 0 };
-    const critical = allRecords.filter((r) => r.overallCondition === 'Critical').length;
-    const poor = allRecords.filter((r) => r.overallCondition === 'Poor').length;
-    const overdue = allRecords.filter((r) => r.nextInspectionDue < '2026-02-01').length;
+    const critical = filteredRecords.filter((r) => r.overallCondition === 'Critical').length;
+    const poor = filteredRecords.filter((r) => r.overallCondition === 'Poor').length;
+    const overdue = filteredRecords.filter((r) => r.nextInspectionDue < '2026-02-01').length;
     return { total, critical, poor, overdue };
-  }, [allRecords]);
+  }, [filteredRecords]);
 
   const SortHeader = ({ label, colKey, className }: { label: string; colKey: SortKey; className?: string }) => (
     <button

@@ -75,7 +75,7 @@ export default function MaintenanceHistory() {
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
       return matchesSearch && matchesType && matchesVoltage && matchesCategory && matchesStatus;
     });
-  }, [search, typeFilter, voltageFilter, categoryFilter, statusFilter]);
+  }, [allRecords, search, typeFilter, voltageFilter, categoryFilter, statusFilter]);
 
   const sortedRecords = useMemo(() => {
     if (!sortKey) return filteredRecords;
@@ -172,16 +172,16 @@ export default function MaintenanceHistory() {
 
   // ─── KPI Summary ──────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const total = allRecords.length;
+    const total = filteredRecords.length;
     if (total === 0) return { total: 0, preventive: 0, unplanned: 0, inProgress: 0, totalCost: 0, avgDuration: 0 };
-    const preventive = allRecords.filter((r) => r.category === 'Preventive').length;
-    const unplanned = allRecords.filter((r) => r.category === 'Repair - Unplanned').length;
-    const inProgress = allRecords.filter((r) => r.status === 'In Progress').length;
-    const totalCost = allRecords.reduce((sum, r) => sum + r.cost, 0);
-    const completed = allRecords.filter((r) => r.status === 'Completed');
+    const preventive = filteredRecords.filter((r) => r.category === 'Preventive').length;
+    const unplanned = filteredRecords.filter((r) => r.category === 'Repair - Unplanned').length;
+    const inProgress = filteredRecords.filter((r) => r.status === 'In Progress').length;
+    const totalCost = filteredRecords.reduce((sum, r) => sum + r.cost, 0);
+    const completed = filteredRecords.filter((r) => r.status === 'Completed');
     const avgDuration = completed.length > 0 ? Math.round(completed.reduce((sum, r) => sum + r.duration, 0) / completed.length * 10) / 10 : 0;
     return { total, preventive, unplanned, inProgress, totalCost, avgDuration };
-  }, [allRecords]);
+  }, [filteredRecords]);
 
   const SortHeader = ({ label, colKey, className }: { label: string; colKey: SortKey; className?: string }) => (
     <button
